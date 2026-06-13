@@ -1,0 +1,27 @@
+services:
+  opencode-a2a-xfce:
+    build:
+      context: .
+      args:
+        OPENCODE_A2A_VERSION: ${OPENCODE_A2A_VERSION:-1.1.1}
+    image: custom-opencode-a2a-xfce:latest
+    ports:
+      - "${A2A_HOST_PORT:-8000}:8000"
+      - "${OPENCODE_HOST_PORT:-14096}:4096"
+      - "${VNC_HOST_PORT:-5900}:5900"
+      - "${NOVNC_HOST_PORT:-6080}:6080"
+    environment:
+      A2A_PUBLIC_URL: ${A2A_PUBLIC_URL:-http://localhost:18000}
+      OPENCODE_HOST: ${OPENCODE_HOST:-0.0.0.0}
+      OPENCODE_WORKSPACE_ROOT: ${OPENCODE_WORKSPACE_ROOT:-/workspace}
+      # Replace this before exposing the service outside your machine.
+      A2A_STATIC_AUTH_CREDENTIALS: ${A2A_STATIC_AUTH_CREDENTIALS:-[{"scheme":"bearer","token":"change-me","principal":"local"}]}
+      # Optional: set a VNC password. If omitted, VNC runs without a password.
+      VNC_PASSWORD: ${VNC_PASSWORD:-}
+    volumes:
+      - ./workspace:/workspace
+      - ./data:/data
+      - opencode-home:/home/opencode
+
+volumes:
+  opencode-home:

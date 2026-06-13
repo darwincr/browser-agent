@@ -12,6 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     OPENCODE_PORT=4096 \
     A2A_HOST=0.0.0.0 \
     A2A_PORT=8000 \
+    A2A_UPSTREAM_PORT=8001 \
     A2A_PUBLIC_URL=http://localhost:8000 \
     OPENCODE_BASE_URL=http://127.0.0.1:4096 \
     OPENCODE_WORKSPACE_ROOT=/workspace \
@@ -53,7 +54,8 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 opencode \
     && chown -R opencode:opencode /workspace /data /home/opencode
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/a2a-file-proxy
 
 WORKDIR /workspace
 

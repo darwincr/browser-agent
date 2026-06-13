@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
+import mimetypes
 import os
 from pathlib import Path
 import sys
@@ -27,6 +29,7 @@ def main() -> int:
     parser.add_argument("--model-provider", help="Optional metadata.shared.model.providerID")
     parser.add_argument("--model", help="Optional metadata.shared.model.modelID")
     parser.add_argument("--directory", help="Optional metadata.opencode.directory")
+    parser.add_argument("--file", action="append", default=[], help="Attach a local file as an A2A FilePart")
     args = parser.parse_args()
 
     payload = build_payload(args)
@@ -102,6 +105,8 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         "role": "ROLE_USER",
         "parts": [{"text": args.message}],
     }
+    for file_path in args.file:
+        message["parts"].append(file_part_from_path(Path(file_path)))
     if args.context_id:
         message["contextId"] = args.context_id
 
@@ -129,6 +134,19 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         }
 
     return {"message": message}
+
+
+def file_part_from_path(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise SystemExit(f"Attached file does not exist or is not a file: {path}")
+    mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return {
+        "file": {
+            "name": path.name,
+            "mimeType": mime_type,
+            "bytes": base64.b64encode(path.read_bytes()).decode("ascii"),
+        }
+    }
 
 
 def endpoint_for(args: argparse.Namespace) -> str:

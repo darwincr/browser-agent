@@ -117,6 +117,71 @@ Useful options:
 - `--session-id existing-opencode-session-id`
 - `--model-provider provider-id --model model-id`
 - `--directory /workspace/some-subdir`
+- `--file ./path/to/input.pdf`
+
+## A2A File Inputs And Artifacts
+
+This image includes a lightweight A2A file proxy in front of `opencode-a2a`.
+The proxy follows A2A file conventions while keeping the upstream OpenCode agent unchanged:
+
+- Incoming `FilePart`s in `message.parts` are staged under `/workspace/a2a-tasks/<task-id>/inputs`.
+- The agent receives an added instruction listing the staged input paths.
+- Files the agent writes under `/workspace/a2a-tasks/<task-id>/outputs` are returned as A2A `artifacts` with `FilePart` URIs.
+- Artifact files are served from `/artifacts/<task-id>/outputs/<filename>` and require the same bearer token when `A2A_STATIC_AUTH_CREDENTIALS` is configured.
+
+Attach a local file with the test client:
+
+```bash
+python3 scripts/a2a_request.py --file ./source.pdf "Summarize this file and write summary.md for the next agent."
+```
+
+The client sends the file as an inline A2A `FilePart`:
+
+```json
+{
+  "file": {
+    "name": "source.pdf",
+    "mimeType": "application/pdf",
+    "bytes": "base64-encoded-content"
+  }
+}
+```
+
+For larger agent-to-agent workflows, prefer URI-based file parts:
+
+```json
+{
+  "file": {
+    "name": "source.pdf",
+    "mimeType": "application/pdf",
+    "uri": "https://files.example.com/tasks/task-123/source.pdf"
+  }
+}
+```
+
+When the agent writes output files to the provided `outputs` directory, the proxy adds artifacts like:
+
+```json
+{
+  "artifactId": "summary.md",
+  "name": "summary.md",
+  "parts": [
+    {
+      "file": {
+        "name": "summary.md",
+        "mimeType": "text/markdown",
+        "uri": "http://localhost:18000/artifacts/msg-123/outputs/summary.md"
+      }
+    }
+  ]
+}
+```
+
+Runtime knobs:
+
+- `A2A_UPSTREAM_PORT`: internal `opencode-a2a` port, default `8001`.
+- `A2A_FILE_TASK_ROOT`: task staging root, default `/workspace/a2a-tasks`.
+- `A2A_FILE_MAX_INLINE_BYTES`: maximum inline `bytes` file size, default `10485760`.
 
 ## Provider Configuration
 
@@ -152,3 +217,4 @@ Runtime logs are written inside the container at:
 - `/tmp/x11vnc.log`
 - `/tmp/novnc.log`
 - `/tmp/opencode.log`
+- `/tmp/opencode-a2a.log`

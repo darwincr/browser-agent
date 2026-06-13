@@ -14,9 +14,11 @@ export OPENCODE_PORT="${OPENCODE_PORT:-4096}"
 export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://${OPENCODE_HOST}:${OPENCODE_PORT}}"
 export A2A_HOST="${A2A_HOST:-0.0.0.0}"
 export A2A_PORT="${A2A_PORT:-8000}"
+export A2A_UPSTREAM_PORT="${A2A_UPSTREAM_PORT:-8001}"
 export A2A_PUBLIC_URL="${A2A_PUBLIC_URL:-http://localhost:${A2A_PORT}}"
 export OPENCODE_WORKSPACE_ROOT="${OPENCODE_WORKSPACE_ROOT:-/workspace}"
 export A2A_TASK_STORE_DATABASE_URL="${A2A_TASK_STORE_DATABASE_URL:-sqlite+aiosqlite:////data/opencode-a2a.db}"
+export A2A_FILE_PROXY_UPSTREAM="${A2A_FILE_PROXY_UPSTREAM:-http://127.0.0.1:${A2A_UPSTREAM_PORT}}"
 
 mkdir -p /workspace /data "$HOME/.vnc"
 
@@ -55,6 +57,8 @@ startxfce4 2>&1 | tee /tmp/xfce.log &
 x11vnc -display "$DISPLAY" -forever -shared "${VNC_AUTH_ARGS[@]}" -rfbport 5900 2>&1 | tee /tmp/x11vnc.log &
 websockify --web=/usr/share/novnc/ "${NOVNC_PORT:-6080}" localhost:5900 2>&1 | tee /tmp/novnc.log &
 
-opencode serve --hostname "$OPENCODE_HOST" --port "$OPENCODE_PORT" 2>&1 | tee /tmp/opencode.log &
+opencode serve --hostname "$OPENCODE_HOST" --port "$OPENCODE_PORT" --log-level INFO 2>&1 | tee /tmp/opencode.log &
 
-exec opencode-a2a serve
+A2A_PORT="$A2A_UPSTREAM_PORT" A2A_HOST="127.0.0.1" opencode-a2a serve 2>&1 | tee /tmp/opencode-a2a.log &
+
+exec a2a-file-proxy

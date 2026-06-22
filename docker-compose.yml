@@ -18,6 +18,8 @@ services:
       A2A_STATIC_AUTH_CREDENTIALS: ${A2A_STATIC_AUTH_CREDENTIALS:-[{"scheme":"bearer","token":"change-me","principal":"local"}]}
       # Optional: set a VNC password. If omitted, VNC runs without a password.
       VNC_PASSWORD: ${VNC_PASSWORD:-}
+      # Optional: max size for inline (base64) A2A file parts. Default 10 MiB.
+      A2A_FILE_MAX_INLINE_BYTES: ${A2A_FILE_MAX_INLINE_BYTES:-10485760}
     volumes:
       - ./workspace:/workspace
       - ./data:/data

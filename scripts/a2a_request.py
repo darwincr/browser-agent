@@ -16,6 +16,14 @@ import urllib.request
 from typing import Any
 
 
+TERMINAL_TASK_STATES = frozenset({
+    "TASK_STATE_COMPLETED",
+    "TASK_STATE_CANCELED",
+    "TASK_STATE_FAILED",
+    "TASK_STATE_REJECTED",
+})
+
+
 def main() -> int:
     env = load_dotenv()
     parser = argparse.ArgumentParser(description="Send test A2A requests to opencode-a2a.")
@@ -29,7 +37,10 @@ def main() -> int:
     parser.add_argument("--model-provider", help="Optional metadata.shared.model.providerID")
     parser.add_argument("--model", help="Optional metadata.shared.model.modelID")
     parser.add_argument("--directory", help="Optional metadata.opencode.directory")
-    parser.add_argument("--file", action="append", default=[], help="Attach a local file as an A2A FilePart")
+    parser.add_argument("--file", action="append", default=[], help="Attach a local file as an inline A2A raw Part")
+    parser.add_argument("--async", dest="async_submit", action="store_true", help="Submit with returnImmediately and poll until a terminal task state")
+    parser.add_argument("--poll-interval", type=float, default=2.0, help="Seconds between polls (default 2)")
+    parser.add_argument("--poll-timeout", type=float, default=300.0, help="Maximum seconds to poll before giving up (default 300)")
     args = parser.parse_args()
 
     payload = build_payload(args)
@@ -39,7 +50,13 @@ def main() -> int:
         print("Missing bearer token. Set A2A_STATIC_AUTH_CREDENTIALS in .env or pass --token.", file=sys.stderr)
         return 1
 
+    if args.async_submit and args.stream:
+        print("--async cannot be combined with --stream.", file=sys.stderr)
+        return 1
+
     try:
+        if args.async_submit:
+            return async_submit_and_poll(args, endpoint, token, payload)
         if args.stream:
             stream_response(endpoint, token, payload)
         else:
@@ -141,11 +158,9 @@ def file_part_from_path(path: Path) -> dict[str, Any]:
         raise SystemExit(f"Attached file does not exist or is not a file: {path}")
     mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     return {
-        "file": {
-            "name": path.name,
-            "mimeType": mime_type,
-            "bytes": base64.b64encode(path.read_bytes()).decode("ascii"),
-        }
+        "filename": path.name,
+        "mediaType": mime_type,
+        "raw": base64.b64encode(path.read_bytes()).decode("ascii"),
     }
 
 
@@ -160,6 +175,20 @@ def endpoint_for(args: argparse.Namespace) -> str:
 
 def post_json(url: str, token: str, payload: dict[str, Any]) -> Any:
     request = make_request(url, token, payload)
+    with urllib.request.urlopen(request, timeout=300) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def get_json(url: str, token: str) -> Any:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "A2A-Version": "1.0",
+        },
+        method="GET",
+    )
     with urllib.request.urlopen(request, timeout=300) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -195,6 +224,59 @@ def print_sse_event(event: str, data_lines: list[str]) -> None:
             print(data)
 
 
+def async_submit_and_poll(args: argparse.Namespace, endpoint: str, token: str, payload: dict[str, Any]) -> int:
+    inject_return_immediately(payload, args.json_rpc)
+    response = post_json(endpoint, token, payload)
+    task_id = extract_task_id(response, args.json_rpc)
+    if not task_id:
+        print(json.dumps(response, indent=2, sort_keys=True))
+        print("Could not extract task id; cannot poll.", file=sys.stderr)
+        return 1
+    print(f"Submitted task {task_id}. Polling every {args.poll_interval}s (timeout {args.poll_timeout}s).", file=sys.stderr)
+    base_url = args.url.rstrip("/")
+    deadline = time.monotonic() + args.poll_timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            print(f"Polling timed out after {args.poll_timeout}s.", file=sys.stderr)
+            return 1
+        time.sleep(min(args.poll_interval, remaining))
+        task = fetch_task(base_url, token, task_id, args.json_rpc)
+        state = task.get("status", {}).get("state", "UNKNOWN")
+        print(f"[poll] state={state}", file=sys.stderr)
+        if state in TERMINAL_TASK_STATES:
+            print(json.dumps(task, indent=2, sort_keys=True))
+            return 0
+
+
+def inject_return_immediately(payload: dict[str, Any], json_rpc: bool) -> None:
+    container = payload.setdefault("params", {}) if json_rpc else payload
+    configuration = container.setdefault("configuration", {})
+    configuration["returnImmediately"] = True
+
+
+def extract_task_id(response: Any, json_rpc: bool) -> str | None:
+    container = response.get("result", response) if json_rpc else response
+    if isinstance(container, dict):
+        task = container.get("task")
+        if isinstance(task, dict):
+            return task.get("id")
+    return None
+
+
+def fetch_task(base_url: str, token: str, task_id: str, json_rpc: bool) -> dict[str, Any]:
+    if json_rpc:
+        payload = {
+            "jsonrpc": "2.0",
+            "id": int(time.time() * 1000),
+            "method": "GetTask",
+            "params": {"id": task_id},
+        }
+        response = post_json(f"{base_url}/", token, payload)
+        return response.get("result", response)
+    return get_json(f"{base_url}/v1/tasks/{task_id}", token)
+
+
 def make_request(url: str, token: str, payload: dict[str, Any]) -> urllib.request.Request:
     body = json.dumps(payload).encode("utf-8")
     return urllib.request.Request(
@@ -203,6 +285,7 @@ def make_request(url: str, token: str, payload: dict[str, Any]) -> urllib.reques
         headers={
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
+            "A2A-Version": "1.0",
             "Accept": "text/event-stream" if url.endswith("message:stream") else "application/json",
         },
         method="POST",

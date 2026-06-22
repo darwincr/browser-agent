@@ -10,6 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     VNC_DEPTH=24 \
     OPENCODE_HOST=127.0.0.1 \
     OPENCODE_PORT=4096 \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers \
+    CAMOUFOX_CACHE_DIR=/opt/camoufox \
     A2A_HOST=0.0.0.0 \
     A2A_PORT=8000 \
     A2A_UPSTREAM_PORT=8001 \
@@ -26,6 +28,22 @@ RUN apt-get update \
         dbus-x11 \
         git \
         gosu \
+        libasound2 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdbus-glib-1-2 \
+        libdrm2 \
+        libgbm1 \
+        libgtk-3-0 \
+        libnss3 \
+        libpangocairo-1.0-0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxkbcommon0 \
+        libxrandr2 \
+        libxss1 \
+        libxtst6 \
         net-tools \
         nodejs \
         npm \
@@ -45,6 +63,10 @@ RUN python -m pip install --no-cache-dir --upgrade pip uv \
     && ln -s /home/opencode/.local/bin/opencode-a2a /usr/local/bin/opencode-a2a \
     && npm install -g opencode-ai \
     && npm cache clean --force
+
+COPY docker/install_private_clis.sh /usr/local/bin/install-private-clis
+RUN chmod +x /usr/local/bin/install-private-clis
+RUN install-private-clis
 
 RUN useradd --create-home --shell /bin/bash --uid 1000 opencode \
     && usermod -aG sudo opencode \

@@ -2,7 +2,7 @@
 """A2A file/artifact proxy for opencode-a2a.
 
 The proxy keeps opencode-a2a as the task engine, while adding conventional
-FilePart staging on inbound messages and Artifact FileParts for files written
+raw/url Part staging on inbound messages and Artifact URL Parts for files written
 by the agent.
 """
 
@@ -83,12 +83,11 @@ class A2AFileProxy(BaseHTTPRequestHandler):
 
     def forward_headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
-        authorization = self.headers.get("Authorization")
-        if authorization:
-            headers["Authorization"] = authorization
-        accept = self.headers.get("Accept")
-        if accept:
-            headers["Accept"] = accept
+        forwarded = {"authorization", "accept", "a2a-version"}
+        for key, value in self.headers.items():
+            lower = key.lower()
+            if lower in forwarded or lower.startswith(("a2a-", "x-")):
+                headers[key] = value
         return headers
 
     def proxy_get(self) -> None:
@@ -206,24 +205,23 @@ def message_from_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
 def stage_file_parts(message: dict[str, Any], inputs_dir: Path) -> list[str]:
     descriptions: list[str] = []
     for index, part in enumerate(message.get("parts", []), start=1):
-        if not isinstance(part, dict) or not isinstance(part.get("file"), dict):
+        if not isinstance(part, dict) or not (isinstance(part.get("raw"), str) or isinstance(part.get("url"), str)):
             continue
-        file_part = part["file"]
-        name = safe_name(str(file_part.get("name") or f"input-{index}"))
+        name = safe_name(str(part.get("filename") or f"input-{index}"))
         path = unique_path(inputs_dir, name)
         inputs_dir.mkdir(parents=True, exist_ok=True)
 
-        if isinstance(file_part.get("bytes"), str):
-            decoded = base64.b64decode(file_part["bytes"], validate=True)
+        if isinstance(part.get("raw"), str):
+            decoded = base64.b64decode(part["raw"], validate=True)
             if len(decoded) > MAX_INLINE_BYTES:
                 raise ProxyError(413, f"inline file {name} exceeds {MAX_INLINE_BYTES} bytes")
             path.write_bytes(decoded)
-        elif isinstance(file_part.get("uri"), str):
-            download_file(file_part["uri"], path)
+        elif isinstance(part.get("url"), str):
+            download_file(part["url"], path)
         else:
-            raise ProxyError(400, f"file part {name} must include bytes or uri")
+            raise ProxyError(400, f"file part {name} must include raw or url")
 
-        mime_type = file_part.get("mimeType") or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        mime_type = part.get("mediaType") or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         descriptions.append(f"- {path} ({mime_type})")
     return descriptions
 
@@ -266,11 +264,9 @@ def attach_artifacts(response: Any, task_id: str, outputs_dir: Path) -> None:
                 "description": f"File produced by the agent: {relative}",
                 "parts": [
                     {
-                        "file": {
-                            "name": file_path.name,
-                            "mimeType": mimetypes.guess_type(file_path.name)[0] or "application/octet-stream",
-                            "uri": f"{PUBLIC_URL}/artifacts/{task_id}/outputs/{parse.quote(str(relative))}",
-                        }
+                        "filename": file_path.name,
+                        "mediaType": mimetypes.guess_type(file_path.name)[0] or "application/octet-stream",
+                        "url": f"{PUBLIC_URL}/artifacts/{task_id}/outputs/{parse.quote(str(relative))}",
                     }
                 ],
             }

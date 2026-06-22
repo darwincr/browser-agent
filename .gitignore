@@ -5,6 +5,7 @@
 
 # Runtime state
 data/
+workspace/a2a-tasks/
 *.db
 *.db-shm
 *.db-wal

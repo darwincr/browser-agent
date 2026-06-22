@@ -92,24 +92,6 @@ If you change the Compose bearer token, pass it explicitly:
 python3 scripts/a2a_request.py --token your-token "What can you do?"
 ```
 
-Test project-local OpenCode skill discovery:
-
-```bash
-python3 scripts/a2a_request.py "Load the test-skill skill and tell me the confirmation sentence."
-```
-
-The skill lives at:
-
-```text
-workspace/.opencode/skills/test-skill/SKILL.md
-```
-
-Inside the container this appears at:
-
-```text
-/workspace/.opencode/skills/test-skill/SKILL.md
-```
-
 Useful options:
 
 - `--url http://localhost:18000`
@@ -124,9 +106,9 @@ Useful options:
 This image includes a lightweight A2A file proxy in front of `opencode-a2a`.
 The proxy follows A2A file conventions while keeping the upstream OpenCode agent unchanged:
 
-- Incoming `FilePart`s in `message.parts` are staged under `/workspace/a2a-tasks/<task-id>/inputs`.
+- Incoming `raw` or `url` file parts in `message.parts` are staged under `/workspace/a2a-tasks/<task-id>/inputs`.
 - The agent receives an added instruction listing the staged input paths.
-- Files the agent writes under `/workspace/a2a-tasks/<task-id>/outputs` are returned as A2A `artifacts` with `FilePart` URIs.
+- Files the agent writes under `/workspace/a2a-tasks/<task-id>/outputs` are returned as A2A `artifacts` with URL parts.
 - Artifact files are served from `/artifacts/<task-id>/outputs/<filename>` and require the same bearer token when `A2A_STATIC_AUTH_CREDENTIALS` is configured.
 
 Attach a local file with the test client:
@@ -135,15 +117,13 @@ Attach a local file with the test client:
 python3 scripts/a2a_request.py --file ./source.pdf "Summarize this file and write summary.md for the next agent."
 ```
 
-The client sends the file as an inline A2A `FilePart`:
+The client sends the file as an inline A2A `raw` part:
 
 ```json
 {
-  "file": {
-    "name": "source.pdf",
-    "mimeType": "application/pdf",
-    "bytes": "base64-encoded-content"
-  }
+  "filename": "source.pdf",
+  "mediaType": "application/pdf",
+  "raw": "base64-encoded-content"
 }
 ```
 
@@ -151,11 +131,9 @@ For larger agent-to-agent workflows, prefer URI-based file parts:
 
 ```json
 {
-  "file": {
-    "name": "source.pdf",
-    "mimeType": "application/pdf",
-    "uri": "https://files.example.com/tasks/task-123/source.pdf"
-  }
+  "filename": "source.pdf",
+  "mediaType": "application/pdf",
+  "url": "https://files.example.com/tasks/task-123/source.pdf"
 }
 ```
 
@@ -167,11 +145,9 @@ When the agent writes output files to the provided `outputs` directory, the prox
   "name": "summary.md",
   "parts": [
     {
-      "file": {
-        "name": "summary.md",
-        "mimeType": "text/markdown",
-        "uri": "http://localhost:18000/artifacts/msg-123/outputs/summary.md"
-      }
+      "filename": "summary.md",
+      "mediaType": "text/markdown",
+      "url": "http://localhost:18000/artifacts/msg-123/outputs/summary.md"
     }
   ]
 }
@@ -200,6 +176,35 @@ RUN apt-get update \
 ```
 
 For language tools, add install commands after the existing Python/Node installation block.
+
+## Private CLI Tools For Skills
+
+The image installs Python CLI tools from public GitHub repositories during the
+Docker build:
+
+- `geminiwebapp-cli` from `darwincr/geminiwebapp-cli`
+- `facebook-cli` from `darwincr/facebook-cli` when that repository has a default branch
+
+`geminiwebapp-cli` is a required build dependency. If SSH
+forwarding is not working, the build fails rather than silently creating an image
+without the tools required by skills.
+
+The build uses unauthenticated HTTPS Git URLs, so no GitHub credentials or SSH
+keys are needed in the Docker build.
+
+Skills can call these commands directly when the image is running:
+
+```bash
+geminiwebapp-cli --help
+facebook-cli --help
+```
+
+`geminiwebapp-cli` uses persistent browser sessions. Its
+state is stored under the container user's home directory by default, which is
+persisted by the `opencode-home` volume.
+
+`facebook-cli` currently exists as a private GitHub repository but has no default
+branch, so the build skips it until the repo contains installable code.
 
 ## Overriding Startup
 

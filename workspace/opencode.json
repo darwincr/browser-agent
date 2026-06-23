@@ -1,8 +1,589 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "server": {
+    "port": 4096,
+    "hostname": "0.0.0.0",
+    "cors": [
+      "dranzone.net",
+      "http://localhost:4096"
+    ]
+  },
+  "plugin": [
+    "@tarquinen/opencode-smart-title"
+  ],
+  "default_agent": "Build",
+  "small_model": "dr-openai/CLIProxy/gemini-3.1-flash-lite",
+  "autoupdate": true,
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 8192
+  },
+  "command": {
+    "test": {
+      "template": "Run tests for the modified files and suggest fixes for any failures.",
+      "description": "Run tests for the modified files and suggest fixes for any failures."
+    }
+  },
+  "mcp": {
+    "web_search_prime": {
+      "type": "remote",
+      "enabled": false,
+      "url": "https://litellm.dranzone.net/web_search_prime/mcp",
+      "headers": {
+        "x-litellm-api-key": "Bearer {env:LITELLM_API_KEY}"
+      }
+    },
+    "zread": {
+      "type": "remote",
+      "enabled": false,
+      "url": "https://litellm.dranzone.net/zread/mcp",
+      "headers": {
+        "x-litellm-api-key": "Bearer {env:LITELLM_API_KEY}"
+      }
+    },
+    "docs-langchain": {
+      "type": "remote",
+      "enabled": false,
+      "url": "https://docs.langchain.com/mcp"
+    }
+  },
+  "provider": {
+    "dr-openai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "DR LiteLLM",
+      "options": {
+        "baseURL": "https://litellm.dranzone.net/",
+        "apiKey": "{env:LITELLM_API_KEY}",
+        "setCacheKey": true
+      },
+      "models": {
+        "zai/glm-5-turbo": {
+          "name": "GLM-5-turbo",
+          "limit": {
+            "context": 128000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 0.6,
+            "output": 2.2
+          },
+          "variants": {
+            "none": {
+              "reasoningEffort": "none"
+            }
+          }
+        },
+        "zai/glm-5": {
+          "name": "GLM-5",
+          "limit": {
+            "context": 198000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 1,
+            "output": 3.2
+          }
+        },
+        "zai/glm-5.1": {
+          "name": "GLM-5.1",
+          "limit": {
+            "context": 198000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 1.4,
+            "output": 4.4
+          },
+          "variants": {
+            "none": {
+              "reasoningEffort": "none"
+            }
+          }
+        },
+        "zai/glm-5.2": {
+          "name": "GLM-5.2",
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 1.4,
+            "output": 4.4
+          },
+          "variants": {
+            "none": {
+              "reasoningEffort": "none"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "max": {
+              "reasoningEffort": "max"
+            }
+          }
+        },
+        "siliconflow/zai-org/GLM-5": {
+          "name": "SF GLM-5",
+          "limit": {
+            "context": 198000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 0.75,
+            "output": 2.55
+          }
+        },
+        "ollama-cloud/glm-5:cloud": {
+          "name": "OLL GLM-5",
+          "limit": {
+            "context": 198000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          }
+        },
+        "cerebras/zai-glm-4.7": {
+          "name": "CER GLM-4.7",
+          "limit": {
+            "context": 128000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 2.25,
+            "output": 2.75
+          }
+        },
+        "azure/gpt-5.3-codex": {
+          "name": "gpt-5.3-codex",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 1.75,
+            "output": 14,
+            "cache_read": 0.17,
+            "cache_write": 1.75
+          }
+        },
+        "azure/gpt-5.4": {
+          "name": "gpt-5.4",
+          "limit": {
+            "context": 1100000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 2.5,
+            "output": 15,
+            "cache_read": 0.25,
+            "cache_write": 2.5
+          }
+        },
+        "minimax/MiniMax-M2.7": {
+          "name": "MiniMax M2.7",
+          "limit": {
+            "context": 204800,
+            "output": 131000
+          },
+          "cost": {
+            "input": 0.3,
+            "output": 1.2
+          }
+        },
+        "sambanova/MiniMax-M2.7": {
+          "name": "SambaNova MiniMax M2.7",
+          "limit": {
+            "context": 204800,
+            "output": 131000
+          },
+          "cost": {
+            "input": 0.6,
+            "output": 2.4
+          }
+        },
+        "ollama-cloud/minimax-M2.7:cloud": {
+          "name": "OLL MiniMax M2.7",
+          "limit": {
+            "context": 204800,
+            "output": 131000
+          },
+          "cost": {
+            "input": 0.3,
+            "output": 1.2
+          }
+        },
+        "siliconflow/MiniMaxAI/MiniMax-M2.7": {
+          "name": "SF MiniMax M2.7",
+          "limit": {
+            "context": 197000,
+            "output": 131000
+          },
+          "cost": {
+            "input": 0.2,
+            "output": 1
+          }
+        },
+        "moonshot/kimi-k2.5": {
+          "name": "Kimi K2.5",
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "cost": {
+            "input": 0.6,
+            "output": 3
+          }
+        },
+        "ollama-cloud/kimi-k2.5:cloud": {
+          "name": "OLL Kimi K2.5",
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          }
+        },
+        "omlx/Qwen3.6-27B-oQ8-fp16-mtp": {
+          "name": "OMLX Qwen3.6 27B oQ8 fp16 MTP",
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "variants": {
+            "reasoning": {},
+            "none": {
+              "reasoningEffort": "none"
+            }
+          }
+        },
+        "omlx/gemma-4-31B-it-oQ8-fp16": {
+          "name": "OMLX Gemma 4 31B IT oQ8 fp16",
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "variants": {
+            "reasoning": {},
+            "none": {
+              "reasoningEffort": "none"
+            }
+          }
+        },
+        "omlx/gemma-4-26B-A4B-it-oQ8-fp16": {
+          "name": "OMLX Gemma 4 26B A4B IT oQ8 fp16",
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "variants": {
+            "reasoning": {},
+            "none": {
+              "reasoningEffort": "none"
+            }
+          }
+        },
+        "omlx/Qwen3.6-35B-A3B-oQ8-fp16-mtp": {
+          "name": "OMLX Qwen3.6 35B A3B oQ8 fp16 MTP",
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "variants": {
+            "reasoning": {},
+            "none": {
+              "reasoningEffort": "none"
+            }
+          }
+        },
+        "omlx/Qwen3-Coder-Next-MLX-8bit": {
+          "name": "OMLX Qwen3 Coder Next MLX 8bit",
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          }
+        },
+        "gemini/gemini-3.1-flash-lite": {
+          "name": "Gemini 3.1 Flash Lite Preview",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "cost": {
+            "input": 0.25,
+            "output": 1.5
+          }
+        },
+        "CLIProxy/claude-opus-4-6-thinking": {
+          "name": "Claude Opus 4.6 Thinking",
+          "limit": {
+            "context": 200000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 2,
+            "output": 10
+          }
+        },
+        "CLIProxy/gemini-3.5-flash-low": {
+          "name": "Gemini 3.5 Flash Low",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "cost": {
+            "input": 0.5,
+            "output": 3
+          }
+        },
+        "CLIProxy/gemini-3-flash": {
+          "name": "Gemini 3 Flash",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "cost": {
+            "input": 0.5,
+            "output": 3
+          }
+        },
+        "CLIProxy/gemini-3.1-pro-low": {
+          "name": "Gemini 3.1 Pro Low",
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "cost": {
+            "input": 2,
+            "output": 12
+          }
+        },
+        "CLIProxy/gemini-3.1-flash-lite": {
+          "name": "Gemini 3.1 Flash Lite",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "cost": {
+            "input": 0.25,
+            "output": 1.5
+          }
+        },
+        "cockpit/gpt-5.5": {
+          "name": "Cockpit GPT-5.5",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 5,
+            "output": 30,
+            "cache_read": 0.5
+          },
+          "variants": {
+            "none": {
+              "reasoningEffort": "none"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh"
+            }
+          }
+        },
+        "cockpit/gpt-5.4": {
+          "name": "Cockpit GPT-5.4",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 2.5,
+            "output": 15,
+            "cache_read": 0.25
+          },
+          "variants": {
+            "none": {
+              "reasoningEffort": "none"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh"
+            }
+          }
+        },
+        "cockpit/gpt-5.4-mini": {
+          "name": "Cockpit GPT-5.4 Mini",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 0.75,
+            "output": 4.5,
+            "cache_read": 0.075
+          }
+        },
+        "cockpit/gpt-5.3-codex": {
+          "name": "Cockpit GPT-5.3 Codex",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 1.75,
+            "output": 14
+          }
+        },
+        "xai/grok-4.3": {
+          "name": "Grok-4.3",
+          "attachment": false,
+          "limit": {
+            "context": 1000000,
+            "output": 32768
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    }
+  },
   "permission": {
     "skill": {
       "customize-opencode": "deny"
+    }
+  },
+  "agent": {
+    "Build": {
+      "mode": "primary",
+      "description": "Build",
+      "model": "dr-openai/zai/glm-5.2",
+      "temperature": 1,
+      "permission": {
+        "bash": {
+          "git push": "ask",
+          "*": "allow"
+        },
+        "edit": "allow"
+      },
+      "options": {}
+    },
+    "Build1": {
+      "mode": "primary",
+      "description": "Build 1",
+      "model": "dr-openai/cockpit/gpt-5.5",
+      "temperature": 1,
+      "permission": {
+        "bash": {
+          "git push": "ask",
+          "*": "allow"
+        },
+        "edit": "allow"
+      },
+      "options": {}
+    },
+    "Build3": {
+      "mode": "primary",
+      "description": "Build 3",
+      "model": "dr-openai/omlx/Qwen3.6-27B-oQ8-fp16-mtp",
+      "temperature": 0.1,
+      "permission": {
+        "bash": {
+          "git push": "ask",
+          "*": "allow"
+        },
+        "edit": "allow"
+      },
+      "options": {}
+    },
+    "plan": {
+      "mode": "primary",
+      "description": "Planning agent - GLM5.2",
+      "model": "dr-openai/zai/glm-5.2",
+      "temperature": 1,
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false
+      },
+      "options": {},
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+    "general": {
+      "mode": "subagent",
+      "description": "Deep reasoning and research",
+      "model": "dr-openai/zai/glm-5.2",
+      "variant": "none",
+      "temperature": 1,
+      "maxSteps": 10,
+      "options": {},
+      "permission": {},
+      "steps": 10
+    },
+    "explore": {
+      "mode": "subagent",
+      "description": "Fast codebase exploration",
+      "model": "dr-openai/zai/glm-5.2",
+      "variant": "none",
+      "temperature": 1,
+      "tools": {
+        "webfetch": false
+      },
+      "options": {},
+      "permission": {
+        "webfetch": "deny"
+      }
+    },
+    "compaction": {
+      "model": "dr-openai/CLIProxy/gemini-3-flash"
     }
   }
 }

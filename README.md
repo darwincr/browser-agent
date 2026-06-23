@@ -183,9 +183,10 @@ The image installs Python CLI tools from public GitHub repositories during the
 Docker build:
 
 - `geminiwebapp-cli` from `darwincr/geminiwebapp-cli`
+- `linkedin-cli` from `darwincr/linkedin-cli`
 - `facebook-cli` from `darwincr/facebook-cli` when that repository has a default branch
 
-`geminiwebapp-cli` is a required build dependency. If SSH
+`geminiwebapp-cli` and `linkedin-cli` are required build dependencies. If SSH
 forwarding is not working, the build fails rather than silently creating an image
 without the tools required by skills.
 
@@ -196,11 +197,17 @@ Skills can call these commands directly when the image is running:
 
 ```bash
 geminiwebapp-cli --help
+linkedin-cli --help
 facebook-cli --help
 ```
 
 `geminiwebapp-cli` uses persistent browser sessions. Its
 state is stored under the container user's home directory by default, which is
+persisted by the `opencode-home` volume.
+
+`linkedin-cli` uses Playwright Chromium with a bind + connect session model.
+Open a session once (`linkedin-cli session open`) and drive it from any shell.
+Its browser profile is stored under the container user's home directory, which is
 persisted by the `opencode-home` volume.
 
 `facebook-cli` currently exists as a private GitHub repository but has no default

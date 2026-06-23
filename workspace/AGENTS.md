@@ -39,6 +39,19 @@ Use the Facebook skill when the user asks to:
 
 Before any Facebook request, always check whether Facebook is signed in. If it is not signed in, start the interactive login flow and wait for the user to complete it before continuing.
 
+Use the LinkedIn skill when the user asks to:
+
+- Search for people or jobs inside LinkedIn.
+- Inspect LinkedIn profiles, pages, posts, comments, engagement, jobs, or messages.
+- Check connection status, send connection requests, or message LinkedIn members.
+- Read or send direct messages, including file attachments.
+- Manage LinkedIn posts (create, schedule, delete, react, comment).
+- Manage company page posts, inbox, and scheduled content.
+- Save, unsave, or apply to jobs.
+- List and react to LinkedIn notifications.
+
+Before any LinkedIn request, always check whether the session is open and LinkedIn is signed in via `whoami`. If it is not signed in, start the login flow and wait for the user to complete it before continuing.
+
 ## Research Workflow
 
 - Clarify only when the request is ambiguous enough that research would likely go in the wrong direction.
@@ -50,7 +63,7 @@ Before any Facebook request, always check whether Facebook is signed in. If it i
 
 ## Authentication And Safety
 
-- Do not assume browser services are signed in. Check auth status before using Gemini, Facebook, or any similar authenticated browser tool.
+- Do not assume browser services are signed in. Check auth status before using Gemini, Facebook, LinkedIn, or any similar authenticated browser tool.
 - Do not ask the user for passwords, tokens, cookies, or other credentials.
 - Use only authenticated browser sessions already owned by the user or interactive login flows the user completes directly.
 - For actions that modify external services, such as sending messages, posting, commenting, reacting, deleting, purchasing, or changing settings, proceed only when the user's instruction is explicit and unambiguous.

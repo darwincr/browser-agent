@@ -3,7 +3,7 @@ set -euo pipefail
 
 if [ "$(id -u)" = "0" ]; then
   mkdir -p /workspace /data /home/opencode/.vnc
-  chown -R opencode:opencode /workspace /data /home/opencode
+  chown -R opencode:opencode /workspace /data
   exec gosu opencode "$0" "$@"
 fi
 

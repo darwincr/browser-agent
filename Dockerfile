@@ -58,22 +58,25 @@ RUN apt-get update \
         websockify \
     && rm -rf /var/lib/apt/lists/*
 
+# Create the opencode user BEFORE any installs that write to /home/opencode.
+# Running subsequent installs as opencode avoids an 11-minute recursive chown
+# of ~1 GB of camoufox/playwright cache files on the overlay filesystem.
+RUN useradd --create-home --shell /bin/bash --uid 1000 opencode \
+    && usermod -aG sudo opencode \
+    && printf 'opencode ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/opencode \
+    && chmod 0440 /etc/sudoers.d/opencode \
+    && mkdir -p /workspace /data /opt/playwright-browsers /opt/camoufox \
+    && chown opencode:opencode /workspace /data /opt/playwright-browsers /opt/camoufox
+
 RUN python -m pip install --no-cache-dir --upgrade pip uv \
-    && uv tool install "opencode-a2a==${OPENCODE_A2A_VERSION}" \
+    && gosu opencode uv tool install "opencode-a2a==${OPENCODE_A2A_VERSION}" \
     && ln -s /home/opencode/.local/bin/opencode-a2a /usr/local/bin/opencode-a2a \
     && npm install -g opencode-ai \
     && npm cache clean --force
 
 COPY docker/install_private_clis.sh /usr/local/bin/install-private-clis
 RUN chmod +x /usr/local/bin/install-private-clis
-RUN install-private-clis
-
-RUN useradd --create-home --shell /bin/bash --uid 1000 opencode \
-    && usermod -aG sudo opencode \
-    && printf 'opencode ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/opencode \
-    && chmod 0440 /etc/sudoers.d/opencode \
-    && mkdir -p /workspace /data /home/opencode/.vnc \
-    && chown -R opencode:opencode /workspace /data /home/opencode
+RUN gosu opencode install-private-clis
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy

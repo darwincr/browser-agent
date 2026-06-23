@@ -43,6 +43,10 @@ The Compose file mounts:
 - `./data` to `/data` for the SQLite A2A task store
 - `opencode-home` to `/home/opencode` for persisted OpenCode auth/config state
 
+For Dockerfile-based deployments such as Coolify, the image also seeds `/workspace`
+from the repository's `workspace/` directory at build time. Local Compose still
+overlays that seeded copy with the `./workspace:/workspace` bind mount.
+
 Runtime configuration lives in `.env`. The defaults publish:
 
 - A2A service on host port `18000`

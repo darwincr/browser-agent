@@ -7,5 +7,9 @@ __pycache__
 .coverage
 node_modules
 data
-workspace
+workspace/a2a-tasks
+workspace/.opencode/node_modules
+workspace/.opencode/package-lock.json
+workspace/.opencode/.DS_Store
+workspace/.opencode/skills/.DS_Store
 *.log

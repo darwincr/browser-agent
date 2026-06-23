@@ -82,6 +82,8 @@ COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/a2a-file-proxy
 
+COPY --chown=opencode:opencode workspace/ /workspace/
+
 WORKDIR /workspace
 
 EXPOSE 8000 4096 5900 6080

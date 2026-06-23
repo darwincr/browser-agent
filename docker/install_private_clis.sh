@@ -6,7 +6,7 @@ install_required() {
   local package_url="git+https://github.com/darwincr/${repo}.git@main"
 
   printf 'Installing required private CLI repo: %s\n' "$repo"
-  python -m pip install --no-cache-dir "$package_url"
+  pip install --no-cache-dir "$package_url"
 }
 
 install_optional() {
@@ -15,7 +15,7 @@ install_optional() {
 
   if git ls-remote --exit-code "https://github.com/darwincr/${repo}.git" HEAD >/dev/null 2>&1; then
     printf 'Installing optional private CLI repo: %s\n' "$repo"
-    python -m pip install --no-cache-dir "$package_url"
+    pip install --no-cache-dir "$package_url"
   else
     printf 'Skipping unavailable optional private CLI repo: %s\n' "$repo"
   fi

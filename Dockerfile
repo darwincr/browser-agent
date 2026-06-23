@@ -77,10 +77,8 @@ RUN python -m pip install --no-cache-dir --upgrade pip uv \
 COPY docker/install_private_clis.sh /usr/local/bin/install-private-clis
 RUN chmod +x /usr/local/bin/install-private-clis
 
-# Ensure user-installed CLIs (pip --user) are on PATH at runtime.
-ENV PATH=/home/opencode/.local/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-RUN gosu opencode install-private-clis
+# Install CLIs system-wide (/usr/local/bin) so they survive the opencode-home volume mount.
+RUN install-private-clis
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy

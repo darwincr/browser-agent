@@ -29,6 +29,12 @@ if [ -d /workspace-seed ] && [ ! -f /workspace/AGENTS.md ]; then
   cp -a /workspace-seed/. /workspace/
 fi
 
+# Always overwrite opencode.json from the seed so provider/model config tracks
+# the image on every redeploy, even when /workspace already persists data.
+if [ -f /workspace-seed/opencode.json ]; then
+  cp /workspace-seed/opencode.json /workspace/opencode.json
+fi
+
 if [ $# -gt 0 ]; then
   exec "$@"
 fi

@@ -22,6 +22,13 @@ export A2A_FILE_PROXY_UPSTREAM="${A2A_FILE_PROXY_UPSTREAM:-http://127.0.0.1:${A2
 
 mkdir -p /workspace /data "$HOME/.vnc"
 
+# Seed /workspace from /workspace-seed if it is empty or missing key files.
+# This handles bind-mounted empty directories (e.g. Coolify) while preserving
+# existing local bind mounts that already contain the workspace content.
+if [ -d /workspace-seed ] && [ ! -f /workspace/AGENTS.md ]; then
+  cp -a /workspace-seed/. /workspace/
+fi
+
 if [ $# -gt 0 ]; then
   exec "$@"
 fi

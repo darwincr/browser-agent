@@ -25,6 +25,7 @@ mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" "$CAMOUFOX_CACHE_DIR"
 
 install_required geminiwebapp-cli
 install_required linkedin-cli
+install_required coles-cli
 install_optional facebook-cli
 
 python -m playwright install chromium

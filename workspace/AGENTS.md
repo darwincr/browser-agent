@@ -52,6 +52,15 @@ Use the LinkedIn skill when the user asks to:
 
 Before any LinkedIn request, always check whether the session is open and LinkedIn is signed in via `whoami`. If it is not signed in, start the login flow and wait for the user to complete it before continuing.
 
+Use the Coles skill when the user asks to:
+
+- Search for Coles products or add products to the trolley.
+- Inspect the Coles trolley/cart, change item quantities, or remove items.
+- List current or past Coles orders, or inspect the items in an order.
+- Place a Coles order through checkout.
+
+Before any Coles request, always check whether Coles is signed in via `coles auth status`. If it is not signed in, start the interactive login flow and wait for the user to complete it before continuing. Do not run checkout unless the user explicitly authorizes placing a real order.
+
 ## Research Workflow
 
 - Clarify only when the request is ambiguous enough that research would likely go in the wrong direction.
@@ -63,10 +72,10 @@ Before any LinkedIn request, always check whether the session is open and Linked
 
 ## Authentication And Safety
 
-- Do not assume browser services are signed in. Check auth status before using Gemini, Facebook, LinkedIn, or any similar authenticated browser tool.
+- Do not assume browser services are signed in. Check auth status before using Gemini, Facebook, LinkedIn, Coles, or any similar authenticated browser tool.
 - Do not ask the user for passwords, tokens, cookies, or other credentials.
 - Use only authenticated browser sessions already owned by the user or interactive login flows the user completes directly.
-- For actions that modify external services, such as sending messages, posting, commenting, reacting, deleting, purchasing, or changing settings, proceed only when the user's instruction is explicit and unambiguous.
+- For actions that modify external services, such as sending messages, posting, commenting, reacting, deleting, purchasing, placing orders, or changing settings, proceed only when the user's instruction is explicit and unambiguous.
 
 ## Output Expectations
 

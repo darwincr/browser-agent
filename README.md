@@ -188,9 +188,10 @@ Docker build:
 
 - `geminiwebapp-cli` from `darwincr/geminiwebapp-cli`
 - `linkedin-cli` from `darwincr/linkedin-cli`
+- `coles-cli` from `darwincr/coles-cli`
 - `facebook-cli` from `darwincr/facebook-cli` when that repository has a default branch
 
-`geminiwebapp-cli` and `linkedin-cli` are required build dependencies. If SSH
+`geminiwebapp-cli`, `linkedin-cli`, and `coles-cli` are required build dependencies. If SSH
 forwarding is not working, the build fails rather than silently creating an image
 without the tools required by skills.
 
@@ -202,6 +203,7 @@ Skills can call these commands directly when the image is running:
 ```bash
 geminiwebapp-cli --help
 linkedin-cli --help
+coles --help
 facebook-cli --help
 ```
 
@@ -213,6 +215,12 @@ persisted by the `opencode-home` volume.
 Open a session once (`linkedin-cli session open`) and drive it from any shell.
 Its browser profile is stored under the container user's home directory, which is
 persisted by the `opencode-home` volume.
+
+`coles-cli` (command `coles`) uses a persistent Camoufox browser profile with a
+background worker per session. It does not handle Coles credentials; login is
+completed manually in the opened browser and reused from the saved profile. Its
+profile is stored under the container user's home directory, which is persisted by
+the `opencode-home` volume.
 
 `facebook-cli` currently exists as a private GitHub repository but has no default
 branch, so the build skips it until the repo contains installable code.

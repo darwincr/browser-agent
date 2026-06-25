@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DISPLAY=:1 \
     HOME=/home/opencode \
     NOVNC_PORT=6080 \
-    VNC_GEOMETRY=1440x900 \
+    VNC_GEOMETRY=1920x1080 \
     VNC_DEPTH=24 \
     OPENCODE_HOST=127.0.0.1 \
     OPENCODE_PORT=4096 \
@@ -26,6 +26,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         dbus-x11 \
+        ffmpeg \
         git \
         gosu \
         libasound2 \
@@ -68,9 +69,7 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 opencode \
     && mkdir -p /workspace /data /opt/playwright-browsers /opt/camoufox \
     && chown opencode:opencode /workspace /data /opt/playwright-browsers /opt/camoufox
 
-RUN python -m pip install --no-cache-dir --upgrade pip uv \
-    && gosu opencode uv tool install "opencode-a2a==${OPENCODE_A2A_VERSION}" \
-    && ln -s /home/opencode/.local/bin/opencode-a2a /usr/local/bin/opencode-a2a \
+RUN python -m pip install --no-cache-dir --upgrade pip "opencode-a2a==${OPENCODE_A2A_VERSION}" \
     && npm install -g opencode-ai \
     && npm cache clean --force
 
@@ -82,7 +81,13 @@ RUN install-private-clis
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/a2a-file-proxy
+COPY docker/start-recording /usr/local/bin/start-recording
+COPY docker/stop-recording /usr/local/bin/stop-recording
+RUN chmod +x \
+        /usr/local/bin/entrypoint.sh \
+        /usr/local/bin/a2a-file-proxy \
+        /usr/local/bin/start-recording \
+        /usr/local/bin/stop-recording
 
 COPY --chown=opencode:opencode workspace/ /workspace-seed/
 

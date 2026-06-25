@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+work_dir="$(pwd)"
+pid_file="${SCREEN_RECORDING_PID_FILE:-${work_dir}/screen-recording.pid}"
+output_dir="${SCREEN_RECORDING_OUTPUT_DIR:-${work_dir}}"
+display="${DISPLAY:-:1}"
+geometry="${VNC_GEOMETRY:-1920x1080}"
+framerate="${SCREEN_RECORDING_FRAMERATE:-15}"
+
+case "$display" in
+  *.*) capture_display="$display" ;;
+  *) capture_display="${display}.0" ;;
+esac
+
+if [ -f "$pid_file" ]; then
+  existing_pid="$(cat "$pid_file" 2>/dev/null || true)"
+  if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
+    printf 'Screen recording is already running with PID %s.\n' "$existing_pid" >&2
+    exit 1
+  fi
+  rm -f "$pid_file"
+fi
+
+mkdir -p "$output_dir"
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+output_file="${1:-${output_dir}/screen-recording-${timestamp}.mp4}"
+log_file="${SCREEN_RECORDING_LOG_FILE:-${output_dir}/screen-recording.log}"
+
+if [ -e "$log_file" ] && [ ! -w "$log_file" ]; then
+  rm -f "$log_file"
+fi
+
+nohup ffmpeg \
+  -y \
+  -video_size "$geometry" \
+  -framerate "$framerate" \
+  -f x11grab \
+  -i "$capture_display" \
+  -c:v libx264 \
+  -preset ultrafast \
+  -crf 23 \
+  -pix_fmt yuv420p \
+  "$output_file" \
+  >"$log_file" 2>&1 &
+
+recording_pid="$!"
+sleep 0.3
+if ! kill -0 "$recording_pid" 2>/dev/null; then
+  rm -f "$pid_file" "${pid_file}.output"
+  printf 'Failed to start screen recording. See log: %s\n' "$log_file" >&2
+  exit 1
+fi
+
+printf '%s\n' "$recording_pid" >"$pid_file"
+printf '%s\n' "$output_file" >"${pid_file}.output"
+
+printf 'Started screen recording.\n'
+printf 'PID: %s\n' "$recording_pid"
+printf 'Output: %s\n' "$output_file"
+printf 'Log: %s\n' "$log_file"

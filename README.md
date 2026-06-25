@@ -53,11 +53,45 @@ Runtime configuration lives in `.env`. The defaults publish:
 - OpenCode web UI/upstream service on host port `14096`
 - VNC on host port `5900`
 - noVNC on host port `6080`
+- VNC/noVNC desktop resolution `1920x1080` at 24-bit depth
 
 If a host port is already taken, edit the corresponding value in `.env`, for example:
 
 ```dotenv
 OPENCODE_HOST_PORT=15096
+```
+
+To change the noVNC desktop size, edit `VNC_GEOMETRY` in `.env`, for example:
+
+```dotenv
+VNC_GEOMETRY=1280x720
+```
+
+## Screen Recording
+
+The image includes `ffmpeg` and two helper commands in the system path:
+
+```bash
+start-recording
+stop-recording
+```
+
+`start-recording` captures the XFCE/Xvfb display and saves the MP4 file, log,
+and PID metadata in the current directory.
+
+Run `stop-recording` from the same directory used to start the recording.
+
+Optional runtime settings:
+
+- `SCREEN_RECORDING_FRAMERATE`: capture framerate, default `15`.
+- `SCREEN_RECORDING_OUTPUT_DIR`: output directory, default current directory.
+- `SCREEN_RECORDING_LOG_FILE`: log path, default `./screen-recording.log`.
+- `SCREEN_RECORDING_PID_FILE`: PID path, default `./screen-recording.pid`.
+
+You can also pass an explicit output path:
+
+```bash
+start-recording /workspace/demo.mp4
 ```
 
 ## Verify

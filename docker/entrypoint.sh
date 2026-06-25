@@ -2,8 +2,27 @@
 set -euo pipefail
 
 if [ "$(id -u)" = "0" ]; then
-  mkdir -p /workspace /data /home/opencode/.vnc /home/opencode/.local/share/opencode/log
-  chown -R opencode:opencode /workspace /data /home/opencode/.vnc /home/opencode/.local/share/opencode
+  mkdir -p \
+    /workspace \
+    /data \
+    /home/opencode/.cache \
+    /home/opencode/.config \
+    /home/opencode/Desktop \
+    /home/opencode/.local/share/opencode/log \
+    /home/opencode/.local/state/screen-recording \
+    /home/opencode/.local/state \
+    /home/opencode/.vnc
+  mkdir -p /tmp/.X11-unix /tmp/.ICE-unix
+  chmod 1777 /tmp/.X11-unix /tmp/.ICE-unix
+  chown opencode:opencode /home/opencode
+  chown -R opencode:opencode \
+    /workspace \
+    /data \
+    /home/opencode/.cache \
+    /home/opencode/.config \
+    /home/opencode/Desktop \
+    /home/opencode/.local \
+    /home/opencode/.vnc
   exec gosu opencode "$0" "$@"
 fi
 
@@ -19,8 +38,10 @@ export A2A_PUBLIC_URL="${A2A_PUBLIC_URL:-http://localhost:${A2A_PORT}}"
 export OPENCODE_WORKSPACE_ROOT="${OPENCODE_WORKSPACE_ROOT:-/workspace}"
 export A2A_TASK_STORE_DATABASE_URL="${A2A_TASK_STORE_DATABASE_URL:-sqlite+aiosqlite:////data/opencode-a2a.db}"
 export A2A_FILE_PROXY_UPSTREAM="${A2A_FILE_PROXY_UPSTREAM:-http://127.0.0.1:${A2A_UPSTREAM_PORT}}"
+export XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/etc/xdg}"
+export XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 
-mkdir -p /workspace /data "$HOME/.vnc"
+mkdir -p /workspace /data "$HOME/.vnc" "$HOME/Desktop" "$HOME/.local/state/screen-recording"
 
 # Seed /workspace from /workspace-seed if it is empty or missing key files.
 # This handles bind-mounted empty directories (e.g. Coolify) while preserving
@@ -63,10 +84,16 @@ if [ -f "$lock_file" ]; then
   fi
 fi
 
-Xvfb "$DISPLAY" -screen 0 "${VNC_GEOMETRY:-1440x900}x${VNC_DEPTH:-24}" -nolisten tcp 2>&1 | tee /tmp/xvfb.log &
+Xvfb "$DISPLAY" -screen 0 "${VNC_GEOMETRY:-1920x1080}x${VNC_DEPTH:-24}" -nolisten tcp 2>&1 | tee /tmp/xvfb.log &
 sleep 1
 
-startxfce4 2>&1 | tee /tmp/xfce.log &
+dbus-run-session -- bash -lc '
+  xfsettingsd &
+  xfwm4 --replace &
+  xfdesktop &
+  xfce4-panel &
+  wait
+' 2>&1 | tee /tmp/xfce.log &
 x11vnc -display "$DISPLAY" -forever -shared "${VNC_AUTH_ARGS[@]}" -rfbport 5900 2>&1 | tee /tmp/x11vnc.log &
 websockify --web=/usr/share/novnc/ "${NOVNC_PORT:-6080}" localhost:5900 2>&1 | tee /tmp/novnc.log &
 

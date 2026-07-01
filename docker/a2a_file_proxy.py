@@ -45,6 +45,9 @@ class A2AFileProxy(BaseHTTPRequestHandler):
         if self.path.startswith("/artifacts/"):
             self.serve_artifact()
             return
+        if self.path == "/models" or self.path.startswith("/models?"):
+            self.serve_models()
+            return
 
         self.proxy_get()
 
@@ -128,7 +131,7 @@ class A2AFileProxy(BaseHTTPRequestHandler):
             shutil.copyfileobj(upstream_response, self.wfile)
 
     def serve_artifact(self) -> None:
-        if not artifact_auth_allowed(self.headers.get("Authorization")):
+        if not bearer_auth_allowed(self.headers.get("Authorization")):
             self.send_json({"error": "missing or invalid bearer token"}, status=401)
             return
 
@@ -151,6 +154,24 @@ class A2AFileProxy(BaseHTTPRequestHandler):
         self.end_headers()
         with artifact_path.open("rb") as file_obj:
             shutil.copyfileobj(file_obj, self.wfile)
+
+    def serve_models(self) -> None:
+        if not bearer_auth_allowed(self.headers.get("Authorization")):
+            self.send_json({"error": "missing or invalid bearer token"}, status=401)
+            return
+
+        config_path = WORKSPACE_ROOT / "opencode.json"
+        provider_filter = first_query_value(self.path, "provider")
+        try:
+            config = json.loads(config_path.read_text())
+        except OSError as exc:
+            self.send_json({"ok": False, "error": f"could not read OpenCode config: {exc}"}, status=500)
+            return
+        except json.JSONDecodeError as exc:
+            self.send_json({"ok": False, "error": f"invalid OpenCode config JSON: {exc}"}, status=500)
+            return
+
+        self.send_json({"ok": True, "config": str(config_path), "providers": compact_models(config, provider_filter)})
 
     def send_json(self, payload: Any, status: int = 200) -> None:
         data = json.dumps(payload, indent=2).encode("utf-8")
@@ -369,7 +390,58 @@ def add_modes(target: Any, modes: list[str]) -> None:
             target.append(mode)
 
 
-def artifact_auth_allowed(authorization: str | None) -> bool:
+def compact_models(config: Any, provider_filter: str | None) -> list[dict[str, Any]]:
+    if not isinstance(config, dict) or not isinstance(config.get("provider"), dict):
+        return []
+
+    providers: list[dict[str, Any]] = []
+    for provider_id, provider_config in sorted(config["provider"].items()):
+        if provider_filter and provider_id != provider_filter:
+            continue
+        if not isinstance(provider_config, dict):
+            continue
+        models = provider_config.get("models")
+        if not isinstance(models, dict):
+            models = {}
+        providers.append(
+            {
+                "providerId": provider_id,
+                "name": provider_config.get("name"),
+                "models": compact_provider_models(models),
+            }
+        )
+    return providers
+
+
+def compact_provider_models(models: dict[str, Any]) -> list[dict[str, Any]]:
+    compact: list[dict[str, Any]] = []
+    for model_id, model in sorted(models.items()):
+        if not isinstance(model, dict):
+            compact.append({"modelId": model_id})
+            continue
+
+        item: dict[str, Any] = {
+            "modelId": model_id,
+            "name": model.get("name"),
+        }
+        limit = model.get("limit")
+        if isinstance(limit, dict):
+            item["context"] = limit.get("context")
+            item["output"] = limit.get("output")
+        variants = model.get("variants")
+        if isinstance(variants, dict) and variants:
+            item["variants"] = sorted(variants.keys())
+        compact.append({key: value for key, value in item.items() if value is not None})
+    return compact
+
+
+def first_query_value(path: str, name: str) -> str | None:
+    parsed = parse.urlparse(path)
+    values = parse.parse_qs(parsed.query).get(name)
+    return values[0] if values else None
+
+
+def bearer_auth_allowed(authorization: str | None) -> bool:
     credentials = os.environ.get("A2A_STATIC_AUTH_CREDENTIALS")
     if not credentials:
         return True

@@ -63,6 +63,13 @@ if [ -f /workspace-seed/opencode.json ]; then
   cp /workspace-seed/opencode.json /workspace/opencode.json
 fi
 
+# Keep bundled OpenCode skills current across redeploys. /workspace is commonly
+# persistent in Coolify, so new image-seeded skills would otherwise be skipped.
+if [ -d /workspace-seed/.opencode/skills ]; then
+  mkdir -p /workspace/.opencode/skills
+  cp -a /workspace-seed/.opencode/skills/. /workspace/.opencode/skills/
+fi
+
 if [ $# -gt 0 ]; then
   exec "$@"
 fi

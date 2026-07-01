@@ -139,6 +139,19 @@ Check state without waiting:
 browser-agent-cli --env-file .env.coolify status task-id-from-submit
 ```
 
+List provider/model IDs configured on the A2A server:
+
+```bash
+browser-agent-cli --env-file .env.coolify models
+browser-agent-cli --env-file .env.coolify models --provider dr-openai
+```
+
+For local config inspection without connecting to a server, pass `--config`:
+
+```bash
+browser-agent-cli models --config ./workspace/opencode.json
+```
+
 Useful options:
 
 - `--url https://browser-agent.example.com`
@@ -148,6 +161,7 @@ Useful options:
 - `submit --context-id test-conversation-1 "Continue our conversation."`
 - `submit --session-id existing-opencode-session-id "Use this OpenCode session."`
 - `submit --model-provider provider-id --model model-id "Use this model."`
+- `models --provider provider-id`
 - `submit --directory /workspace/some-subdir "Work in this directory."`
 - `submit --file ./path/to/input.pdf "Summarize this file."`
 - `wait --poll-timeout 600 task-id-from-submit`

@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 import time
 import urllib.error
+from urllib.parse import quote as parse_quote
 import urllib.request
 from typing import Any
 
@@ -38,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
         if command == "card":
             print_json(compact_card(fetch_card(args, env)))
             return 0
+        if command == "models":
+            return models(args, env)
         if command == "submit":
             return submit(args, env)
         if command == "status":
@@ -69,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_status_parser(subparsers, common_parser)
     add_wait_parser(subparsers, common_parser)
     subparsers.add_parser("card", parents=[common_parser], help="Fetch compact A2A agent card details")
+    add_models_parser(subparsers, common_parser)
     return parser
 
 
@@ -109,6 +113,15 @@ def add_wait_parser(
     parser.add_argument("task_id")
     parser.add_argument("--poll-interval", type=float, default=DEFAULT_POLL_INTERVAL, help="Seconds between polls (default 2)")
     parser.add_argument("--poll-timeout", type=float, default=DEFAULT_WAIT_TIMEOUT, help="Maximum seconds to wait (default 600)")
+
+
+def add_models_parser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    common_parser: argparse.ArgumentParser,
+) -> None:
+    parser = subparsers.add_parser("models", parents=[common_parser], help="List provider/model IDs from the A2A server")
+    parser.add_argument("--config", help="Read models from a local opencode.json instead of the remote A2A server")
+    parser.add_argument("--provider", help="Only list models for this provider ID")
 
 
 def add_message_arguments(parser: argparse.ArgumentParser) -> None:
@@ -157,6 +170,54 @@ def wait(args: argparse.Namespace, env: dict[str, str]) -> int:
         result["error"] = "Timed out waiting for task completion"
     print_json(result)
     return task_exit_code(result, timeout_is_error=True)
+
+
+def models(args: argparse.Namespace, env: dict[str, str]) -> int:
+    config_arg = getattr(args, "config", None)
+    if config_arg:
+        return local_models(config_arg, getattr(args, "provider", None))
+
+    token = require_token(args, env)
+    query = f"?provider={parse_quote(args.provider)}" if args.provider else ""
+    response = get_json(f"{base_url(args, env)}/models{query}", token)
+    print_json(response)
+    return 0
+
+
+def local_models(config_path_arg: str, provider_filter: str | None) -> int:
+    config_path = resolve_config_path(config_path_arg)
+    if not config_path:
+        print_json({"ok": False, "error": f"Could not find local config: {config_path_arg}"})
+        return 1
+
+    try:
+        config = json.loads(config_path.read_text())
+    except OSError as exc:
+        print_json({"ok": False, "error": f"Could not read config: {exc}"})
+        return 1
+    except json.JSONDecodeError as exc:
+        print_json({"ok": False, "error": f"Invalid JSON in {config_path}: {exc}"})
+        return 1
+
+    providers = compact_models(config, provider_filter)
+    print_json({"ok": True, "config": str(config_path), "providers": providers})
+    return 0
+
+
+def resolve_config_path(config_path: str | None) -> Path | None:
+    if config_path:
+        path = Path(config_path).expanduser()
+        return path if path.is_file() else None
+
+    candidates = [
+        Path.cwd() / "opencode.json",
+        Path.cwd() / "workspace" / "opencode.json",
+        Path(__file__).resolve().parents[1] / "workspace" / "opencode.json",
+    ]
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
 
 
 def load_dotenv(env_file: str | None) -> dict[str, str]:
@@ -366,6 +427,52 @@ def compact_task(task: dict[str, Any], *, ok: bool) -> dict[str, Any]:
         result["artifacts"] = artifacts
 
     return {key: value for key, value in result.items() if value is not None}
+
+
+def compact_models(config: Any, provider_filter: str | None) -> list[dict[str, Any]]:
+    if not isinstance(config, dict) or not isinstance(config.get("provider"), dict):
+        return []
+
+    providers: list[dict[str, Any]] = []
+    for provider_id, provider in sorted(config["provider"].items()):
+        if provider_filter and provider_id != provider_filter:
+            continue
+        if not isinstance(provider, dict):
+            continue
+        models = provider.get("models")
+        if not isinstance(models, dict):
+            models = {}
+
+        providers.append(
+            {
+                "providerId": provider_id,
+                "name": provider.get("name"),
+                "models": compact_provider_models(models),
+            }
+        )
+    return providers
+
+
+def compact_provider_models(models: dict[str, Any]) -> list[dict[str, Any]]:
+    compact: list[dict[str, Any]] = []
+    for model_id, model in sorted(models.items()):
+        if not isinstance(model, dict):
+            compact.append({"modelId": model_id})
+            continue
+
+        item: dict[str, Any] = {
+            "modelId": model_id,
+            "name": model.get("name"),
+        }
+        limit = model.get("limit")
+        if isinstance(limit, dict):
+            item["context"] = limit.get("context")
+            item["output"] = limit.get("output")
+        variants = model.get("variants")
+        if isinstance(variants, dict) and variants:
+            item["variants"] = sorted(variants.keys())
+        compact.append({key: value for key, value in item.items() if value is not None})
+    return compact
 
 
 def compact_artifacts(task: dict[str, Any]) -> list[dict[str, str]]:

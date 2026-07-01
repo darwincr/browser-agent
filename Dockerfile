@@ -81,11 +81,13 @@ RUN install-private-clis
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy
+COPY docker/opencode-healthcheck /usr/local/bin/opencode-healthcheck
 COPY docker/start-recording /usr/local/bin/start-recording
 COPY docker/stop-recording /usr/local/bin/stop-recording
 RUN chmod +x \
         /usr/local/bin/entrypoint.sh \
         /usr/local/bin/a2a-file-proxy \
+        /usr/local/bin/opencode-healthcheck \
         /usr/local/bin/start-recording \
         /usr/local/bin/stop-recording
 
@@ -94,5 +96,8 @@ COPY --chown=opencode:opencode workspace/ /workspace-seed/
 WORKDIR /workspace
 
 EXPOSE 8000 4096 5900 6080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD ["/usr/local/bin/opencode-healthcheck"]
 
 ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]

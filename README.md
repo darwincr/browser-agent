@@ -102,7 +102,59 @@ After the container starts, check the public Agent Card:
 curl http://localhost:18000/.well-known/agent-card.json
 ```
 
+The Agent Card describes the browser/desktop automation, workspace command, and file-artifact capabilities. Set `A2A_BROWSER_VIEW_URL` to the public noVNC URL that observers can open to watch the browser session.
+
 Authenticated requests require the bearer token configured in `A2A_STATIC_AUTH_CREDENTIALS`. The default Compose token is `change-me`; replace it before exposing this container beyond local development.
+
+## Browser Agent CLI
+
+Install the local CLI in editable mode:
+
+```bash
+python3 -m pip install -e .
+```
+
+Fetch the deployed Coolify agent card using `.env.coolify`:
+
+```bash
+browser-agent-cli --env-file .env.coolify card
+```
+
+Submit a task to the Coolify deployment. The command waits up to 5 minutes by default
+and returns compact JSON for agent consumption:
+
+```bash
+browser-agent-cli --env-file .env.coolify submit "Say hello and describe your current browser-agent workspace."
+```
+
+If the task is still running, use the returned `taskId` as input to `wait`:
+
+```bash
+browser-agent-cli --env-file .env.coolify wait task-id-from-submit
+```
+
+Check state without waiting:
+
+```bash
+browser-agent-cli --env-file .env.coolify status task-id-from-submit
+```
+
+Useful options:
+
+- `--url https://browser-agent.example.com`
+- `--token your-token`
+- `submit --wait-seconds 300 "Wait up to 5 minutes."`
+- `submit --no-wait "Return taskId immediately."`
+- `submit --context-id test-conversation-1 "Continue our conversation."`
+- `submit --session-id existing-opencode-session-id "Use this OpenCode session."`
+- `submit --model-provider provider-id --model model-id "Use this model."`
+- `submit --directory /workspace/some-subdir "Work in this directory."`
+- `submit --file ./path/to/input.pdf "Summarize this file."`
+- `wait --poll-timeout 600 task-id-from-submit`
+
+The CLI writes compact JSON to stdout. Successful outputs keep only values that
+are useful as future inputs, such as `taskId`, `contextId`, `state`, `terminal`,
+`text`, and artifact file URLs.
 
 ## Test A2A Requests
 
@@ -112,17 +164,7 @@ Use the included standard-library Python client:
 python3 scripts/a2a_request.py "Explain what this repository does."
 ```
 
-Streaming test:
-
-```bash
-python3 scripts/a2a_request.py --stream "Say hello and list three files you can see."
-```
-
-JSON-RPC test:
-
-```bash
-python3 scripts/a2a_request.py --json-rpc "Explain the current workspace."
-```
+This compatibility script now delegates to `browser-agent-cli submit`.
 
 If you change the Compose bearer token, pass it explicitly:
 
@@ -194,6 +236,7 @@ When the agent writes output files to the provided `outputs` directory, the prox
 Runtime knobs:
 
 - `A2A_UPSTREAM_PORT`: internal `opencode-a2a` port, default `8001`.
+- `A2A_BROWSER_VIEW_URL`: public noVNC URL advertised in the Agent Card, for example `http://localhost:6080/vnc.html`.
 - `A2A_FILE_TASK_ROOT`: task staging root, default `/workspace/a2a-tasks`.
 - `A2A_FILE_MAX_INLINE_BYTES`: maximum inline `bytes` file size, default `10485760`.
 
@@ -276,3 +319,12 @@ Runtime logs are written inside the container at:
 - `/tmp/novnc.log`
 - `/tmp/opencode.log`
 - `/tmp/opencode-a2a.log`
+
+## Health Check
+
+The image includes a Docker `HEALTHCHECK` for Coolify and other container
+orchestrators. It probes the OpenCode API at `/global/health` on
+`127.0.0.1:${OPENCODE_PORT:-4096}` and expects `healthy: true`.
+
+If `OPENCODE_SERVER_PASSWORD` is set, the health check uses OpenCode basic auth
+with `OPENCODE_SERVER_USERNAME` or the default username `opencode`.

@@ -25,6 +25,7 @@ HOST = os.environ.get("A2A_FILE_PROXY_HOST", "0.0.0.0")
 PORT = int(os.environ.get("A2A_FILE_PROXY_PORT", os.environ.get("A2A_PORT", "8000")))
 UPSTREAM = os.environ.get("A2A_FILE_PROXY_UPSTREAM", "http://127.0.0.1:8001").rstrip("/")
 PUBLIC_URL = os.environ.get("A2A_PUBLIC_URL", f"http://localhost:{PORT}").rstrip("/")
+BROWSER_VIEW_URL = os.environ.get("A2A_BROWSER_VIEW_URL", "").rstrip("/")
 WORKSPACE_ROOT = Path(os.environ.get("OPENCODE_WORKSPACE_ROOT", "/workspace"))
 TASK_ROOT = Path(os.environ.get("A2A_FILE_TASK_ROOT", str(WORKSPACE_ROOT / "a2a-tasks")))
 MAX_INLINE_BYTES = int(os.environ.get("A2A_FILE_MAX_INLINE_BYTES", str(10 * 1024 * 1024)))
@@ -308,14 +309,55 @@ def augment_agent_card(data: bytes) -> bytes:
     if not isinstance(card, dict):
         return data
 
+    card["name"] = os.environ.get("A2A_AGENT_NAME", "Browser Agent")
+    card["description"] = os.environ.get(
+        "A2A_AGENT_DESCRIPTION",
+        "A browser-enabled coding and research agent with a live noVNC desktop view, file inputs, and artifact outputs.",
+    )
+
     input_modes = card.setdefault("defaultInputModes", [])
     output_modes = card.setdefault("defaultOutputModes", [])
     add_modes(input_modes, ["text/plain", "application/pdf", "text/markdown", "text/html", "application/json"])
     add_modes(output_modes, ["text/plain", "text/markdown", "application/json", "application/pdf", "application/octet-stream"])
-    for skill in card.get("skills", []):
-        if isinstance(skill, dict):
-            add_modes(skill.setdefault("inputModes", []), input_modes)
-            add_modes(skill.setdefault("outputModes", []), output_modes)
+
+    card["skills"] = [
+        {
+            "id": "browser-use",
+            "name": "Browser and desktop automation",
+            "description": "Use a graphical browser/desktop session to visit sites, interact with pages, inspect UI state, and report results.",
+            "inputModes": input_modes.copy(),
+            "outputModes": ["text/plain", "text/markdown", "application/json"],
+        },
+        {
+            "id": "code-and-shell",
+            "name": "Codebase and shell work",
+            "description": "Inspect and edit files in the mounted workspace, run commands, diagnose failures, and summarize changes.",
+            "inputModes": ["text/plain", "text/markdown", "application/json"],
+            "outputModes": ["text/plain", "text/markdown", "application/json"],
+        },
+        {
+            "id": "file-artifacts",
+            "name": "File inputs and artifacts",
+            "description": "Accept A2A raw/url file parts staged into the workspace and return files written to the task output directory as URL artifacts.",
+            "inputModes": input_modes.copy(),
+            "outputModes": output_modes.copy(),
+        },
+    ]
+
+    if BROWSER_VIEW_URL:
+        extensions = card.setdefault("extensions", [])
+        if not isinstance(extensions, list):
+            extensions = []
+            card["extensions"] = extensions
+        extensions.append(
+            {
+                "uri": "https://browser-agent.local/extensions/browser-view",
+                "description": "Live noVNC browser/desktop view for observing agent activity.",
+                "required": False,
+                "params": {"url": BROWSER_VIEW_URL},
+            }
+        )
+
     return json.dumps(card, indent=2).encode("utf-8")
 
 

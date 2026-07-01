@@ -5,6 +5,7 @@ services:
       args:
         OPENCODE_A2A_VERSION: ${OPENCODE_A2A_VERSION:-1.1.1}
     image: custom-opencode-a2a-xfce:latest
+    shm_size: "2gb"
     ports:
       - "${A2A_HOST_PORT:-8000}:8000"
       - "${OPENCODE_HOST_PORT:-14096}:4096"

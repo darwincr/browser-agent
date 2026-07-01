@@ -7,6 +7,7 @@ if [ "$(id -u)" = "0" ]; then
     /data \
     /home/opencode/.cache \
     /home/opencode/.config \
+    /home/opencode/.browser-harness \
     /home/opencode/Desktop \
     /home/opencode/.local/share/opencode/log \
     /home/opencode/.local/state/screen-recording \
@@ -20,6 +21,7 @@ if [ "$(id -u)" = "0" ]; then
     /data \
     /home/opencode/.cache \
     /home/opencode/.config \
+    /home/opencode/.browser-harness \
     /home/opencode/Desktop \
     /home/opencode/.local \
     /home/opencode/.vnc
@@ -31,6 +33,11 @@ export DISPLAY="${DISPLAY:-:1}"
 export OPENCODE_HOST="${OPENCODE_HOST:-127.0.0.1}"
 export OPENCODE_PORT="${OPENCODE_PORT:-4096}"
 export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://${OPENCODE_HOST}:${OPENCODE_PORT}}"
+export BH_HOME="${BH_HOME:-$HOME/.browser-harness}"
+export BROWSER_HARNESS_HOME="${BROWSER_HARNESS_HOME:-$BH_HOME}"
+export BU_CDP_URL="${BU_CDP_URL:-http://127.0.0.1:9222}"
+export BROWSER_HARNESS_SESSION="${BROWSER_HARNESS_SESSION:-default}"
+export BROWSER_HARNESS_PROFILE_DIR="${BROWSER_HARNESS_PROFILE_DIR:-$BH_HOME/profiles/$BROWSER_HARNESS_SESSION}"
 export A2A_HOST="${A2A_HOST:-0.0.0.0}"
 export A2A_PORT="${A2A_PORT:-8000}"
 export A2A_UPSTREAM_PORT="${A2A_UPSTREAM_PORT:-8001}"
@@ -41,7 +48,7 @@ export A2A_FILE_PROXY_UPSTREAM="${A2A_FILE_PROXY_UPSTREAM:-http://127.0.0.1:${A2
 export XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/etc/xdg}"
 export XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 
-mkdir -p /workspace /data "$HOME/.vnc" "$HOME/Desktop" "$HOME/.local/state/screen-recording"
+mkdir -p /workspace /data "$HOME/.vnc" "$HOME/Desktop" "$HOME/.local/state/screen-recording" "$BROWSER_HARNESS_PROFILE_DIR"
 
 # Seed /workspace from /workspace-seed if it is empty or missing key files.
 # This handles bind-mounted empty directories (e.g. Coolify) while preserving
@@ -96,6 +103,8 @@ dbus-run-session -- bash -lc '
 ' 2>&1 | tee /tmp/xfce.log &
 x11vnc -display "$DISPLAY" -forever -shared "${VNC_AUTH_ARGS[@]}" -rfbport 5900 2>&1 | tee /tmp/x11vnc.log &
 websockify --web=/usr/share/novnc/ "${NOVNC_PORT:-6080}" localhost:5900 2>&1 | tee /tmp/novnc.log &
+
+start-browser-harness-browser 2>&1 | tee /tmp/browser-harness-browser.log &
 
 opencode serve --hostname "$OPENCODE_HOST" --port "$OPENCODE_PORT" --log-level INFO 2>&1 | tee /tmp/opencode.log &
 

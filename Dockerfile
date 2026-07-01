@@ -18,6 +18,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     A2A_PUBLIC_URL=http://localhost:8000 \
     OPENCODE_BASE_URL=http://127.0.0.1:4096 \
     OPENCODE_WORKSPACE_ROOT=/workspace \
+    BH_HOME=/home/opencode/.browser-harness \
+    BROWSER_HARNESS_HOME=/home/opencode/.browser-harness \
+    BU_CDP_URL=http://127.0.0.1:9222 \
+    BROWSER_HARNESS_SESSION=default \
+    BROWSER_HARNESS_PROFILE_DIR=/home/opencode/.browser-harness/profiles/default \
     A2A_TASK_STORE_DATABASE_URL=sqlite+aiosqlite:////data/opencode-a2a.db
 
 RUN apt-get update \
@@ -69,7 +74,7 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 opencode \
     && mkdir -p /workspace /data /opt/playwright-browsers /opt/camoufox \
     && chown opencode:opencode /workspace /data /opt/playwright-browsers /opt/camoufox
 
-RUN python -m pip install --no-cache-dir --upgrade pip "opencode-a2a==${OPENCODE_A2A_VERSION}" \
+RUN python -m pip install --no-cache-dir --upgrade pip "opencode-a2a==${OPENCODE_A2A_VERSION}" browser-harness \
     && npm install -g opencode-ai \
     && npm cache clean --force
 
@@ -84,12 +89,14 @@ COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy
 COPY docker/opencode-healthcheck /usr/local/bin/opencode-healthcheck
 COPY docker/start-recording /usr/local/bin/start-recording
 COPY docker/stop-recording /usr/local/bin/stop-recording
+COPY docker/start-browser-harness-browser /usr/local/bin/start-browser-harness-browser
 RUN chmod +x \
         /usr/local/bin/entrypoint.sh \
         /usr/local/bin/a2a-file-proxy \
         /usr/local/bin/opencode-healthcheck \
         /usr/local/bin/start-recording \
-        /usr/local/bin/stop-recording
+        /usr/local/bin/stop-recording \
+        /usr/local/bin/start-browser-harness-browser
 
 COPY --chown=opencode:opencode workspace/ /workspace-seed/
 

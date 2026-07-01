@@ -282,6 +282,7 @@ geminiwebapp-cli --help
 linkedin-cli --help
 coles --help
 facebook-cli --help
+browser-harness --help
 ```
 
 `geminiwebapp-cli` uses persistent browser sessions. Its
@@ -302,6 +303,12 @@ the `opencode-home` volume.
 `facebook-cli` currently exists as a private GitHub repository but has no default
 branch, so the build skips it until the repo contains installable code.
 
+`browser-harness` uses a generic persistent Chromium profile at
+`~/.browser-harness/profiles/default`. The container starts this browser
+automatically in the visible noVNC desktop and exposes CDP only inside the
+container at `http://127.0.0.1:9222`. The launcher reuses Playwright's installed
+Chromium executable instead of installing a second Debian Chromium package.
+
 ## Overriding Startup
 
 The default entrypoint starts XFCE, VNC, noVNC, `opencode serve`, and `opencode-a2a serve`.
@@ -317,6 +324,7 @@ Runtime logs are written inside the container at:
 - `/tmp/xfce.log`
 - `/tmp/x11vnc.log`
 - `/tmp/novnc.log`
+- `/tmp/browser-harness-browser.log`
 - `/tmp/opencode.log`
 - `/tmp/opencode-a2a.log`
 

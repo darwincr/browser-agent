@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export HOME="${HOME:-/home/opencode}"
+export DISPLAY="${DISPLAY:-:1}"
+export BH_HOME="${BH_HOME:-$HOME/.browser-harness}"
+export BROWSER_HARNESS_HOME="${BROWSER_HARNESS_HOME:-$BH_HOME}"
+export BU_CDP_URL="${BU_CDP_URL:-http://127.0.0.1:9222}"
+export BROWSER_HARNESS_SESSION="${BROWSER_HARNESS_SESSION:-default}"
+
+export BROWSER_HARNESS_PROFILE_DIR="${BROWSER_HARNESS_PROFILE_DIR:-$BH_HOME/profiles/$BROWSER_HARNESS_SESSION}"
+mkdir -p "$BROWSER_HARNESS_PROFILE_DIR"
+
+remove_stale_profile_locks() {
+  local lock_path="$BROWSER_HARNESS_PROFILE_DIR/SingletonLock"
+  local lock_value=""
+  local lock_host=""
+  local lock_pid=""
+
+  if [ ! -e "$lock_path" ] && [ ! -L "$lock_path" ]; then
+    return
+  fi
+
+  lock_value="$(readlink "$lock_path" 2>/dev/null || cat "$lock_path" 2>/dev/null || true)"
+  lock_host="${lock_value%-*}"
+  lock_pid="${lock_value##*-}"
+
+  if [ -z "$lock_pid" ] || [ "$lock_pid" = "$lock_value" ]; then
+    return
+  fi
+
+  if [ "$lock_host" != "$(hostname)" ] || ! kill -0 "$lock_pid" 2>/dev/null; then
+    rm -f \
+      "$BROWSER_HARNESS_PROFILE_DIR/SingletonLock" \
+      "$BROWSER_HARNESS_PROFILE_DIR/SingletonCookie" \
+      "$BROWSER_HARNESS_PROFILE_DIR/SingletonSocket"
+  fi
+}
+
+disable_session_restore() {
+  python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+profile_root = Path(os.environ["BROWSER_HARNESS_PROFILE_DIR"])
+default_profile = profile_root / "Default"
+default_profile.mkdir(parents=True, exist_ok=True)
+
+paths = [profile_root / "Local State", default_profile / "Preferences"]
+
+for path in paths:
+    try:
+        data = json.loads(path.read_text()) if path.exists() else {}
+    except json.JSONDecodeError:
+        data = {}
+
+    if path.name == "Preferences":
+        data.setdefault("profile", {})["exited_cleanly"] = True
+        data.setdefault("profile", {})["exit_type"] = "Normal"
+        session = data.setdefault("session", {})
+        session["restore_on_startup"] = 5
+        session["startup_urls"] = ["about:blank"]
+    else:
+        data.setdefault("profile", {})["exited_cleanly"] = True
+        data.setdefault("profile", {})["exit_type"] = "Normal"
+
+    path.write_text(json.dumps(data, separators=(",", ":")))
+PY
+}
+
+resolve_chromium_bin() {
+  if [ -n "${BROWSER_HARNESS_CHROMIUM_BIN:-}" ]; then
+    printf '%s\n' "$BROWSER_HARNESS_CHROMIUM_BIN"
+    return
+  fi
+
+  python - <<'PY'
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    print(p.chromium.executable_path)
+PY
+}
+
+chromium_bin="$(resolve_chromium_bin)"
+
+if [ ! -x "$chromium_bin" ]; then
+  printf 'Chromium executable is not available or executable: %s\n' "$chromium_bin" >&2
+  printf 'Set BROWSER_HARNESS_CHROMIUM_BIN or verify Playwright Chromium is installed.\n' >&2
+  exit 1
+fi
+
+while true; do
+  remove_stale_profile_locks
+  disable_session_restore
+
+  "$chromium_bin" \
+    --user-data-dir="$BROWSER_HARNESS_PROFILE_DIR" \
+    --remote-debugging-address=127.0.0.1 \
+    --remote-debugging-port=9222 \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-session-crashed-bubble \
+    --hide-crash-restore-bubble \
+    --disable-dev-shm-usage \
+    --no-sandbox \
+    --start-maximized \
+    about:blank || true
+
+  sleep 2
+done

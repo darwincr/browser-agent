@@ -61,6 +61,12 @@ Use the Coles skill when the user asks to:
 
 Before any Coles request, always check whether Coles is signed in via `coles auth status`. If it is not signed in, start the interactive login flow and wait for the user to complete it before continuing. Do not run checkout unless the user explicitly authorizes placing a real order.
 
+Use the Browser Harness skill as a fallback for generic browser interaction only when no dedicated website skill exists, or when the user explicitly asks to use the generic browser.
+
+Prefer dedicated website skills over Browser Harness. For Gemini, Facebook, LinkedIn, and Coles tasks, use the dedicated skill even if Browser Harness could technically operate the site.
+
+Browser Harness uses the persistent Chromium profile at `~/.browser-harness/profiles/default` and CDP endpoint `http://127.0.0.1:9222`.
+
 ## Research Workflow
 
 - Clarify only when the request is ambiguous enough that research would likely go in the wrong direction.

@@ -29,10 +29,21 @@ services:
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
     volumes:
       - ./workspace:/workspace
-      - ./docker/workspace-opencode.json:/workspace/opencode.json:ro
       - ./data:/data
       - opencode-home:/home/opencode
-      - ./docker/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+    configs:
+      - source: opencode_config
+        target: /home/opencode/.config/opencode/opencode.json
+        mode: 0444
+      - source: workspace_opencode_placeholder
+        target: /workspace/opencode.json
+        mode: 0444
 
 volumes:
   opencode-home:
+
+configs:
+  opencode_config:
+    file: ./docker/opencode.json
+  workspace_opencode_placeholder:
+    file: ./docker/workspace-opencode.json

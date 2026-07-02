@@ -9,6 +9,7 @@ import json
 import mimetypes
 import os
 from pathlib import Path
+import shlex
 import sys
 import time
 import urllib.error
@@ -24,9 +25,10 @@ TERMINAL_TASK_STATES = frozenset({
     "TASK_STATE_REJECTED",
 })
 SUCCESS_TASK_STATES = frozenset({"TASK_STATE_COMPLETED"})
-DEFAULT_SUBMIT_WAIT_SECONDS = 300.0
+DEFAULT_SUBMIT_WAIT_SECONDS = 240.0
 DEFAULT_POLL_INTERVAL = 2.0
-DEFAULT_WAIT_TIMEOUT = 600.0
+DEFAULT_WAIT_TIMEOUT = 240.0
+BACKEND_TIMEOUT_PREFIXES = ("OpenCode request timed out",)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -92,7 +94,7 @@ def add_submit_parser(
 ) -> None:
     parser = subparsers.add_parser("submit", parents=[common_parser], help="Submit a task and wait briefly by default")
     add_message_arguments(parser)
-    parser.add_argument("--wait-seconds", type=float, default=DEFAULT_SUBMIT_WAIT_SECONDS, help="Seconds to wait for completion (default 300)")
+    parser.add_argument("--wait-seconds", type=float, default=DEFAULT_SUBMIT_WAIT_SECONDS, help="Seconds to wait for completion (default 240)")
     parser.add_argument("--no-wait", action="store_true", help="Return immediately after task submission")
     parser.add_argument("--poll-interval", type=float, default=DEFAULT_POLL_INTERVAL, help="Seconds between polls while waiting (default 2)")
 
@@ -112,7 +114,7 @@ def add_wait_parser(
     parser = subparsers.add_parser("wait", parents=[common_parser], help="Wait for task completion")
     parser.add_argument("task_id")
     parser.add_argument("--poll-interval", type=float, default=DEFAULT_POLL_INTERVAL, help="Seconds between polls (default 2)")
-    parser.add_argument("--poll-timeout", type=float, default=DEFAULT_WAIT_TIMEOUT, help="Maximum seconds to wait (default 600)")
+    parser.add_argument("--poll-timeout", type=float, default=DEFAULT_WAIT_TIMEOUT, help="Maximum seconds to wait (default 240)")
 
 
 def add_models_parser(
@@ -120,7 +122,6 @@ def add_models_parser(
     common_parser: argparse.ArgumentParser,
 ) -> None:
     parser = subparsers.add_parser("models", parents=[common_parser], help="List provider/model IDs from the A2A server")
-    parser.add_argument("--config", help="Read models from a local opencode.json instead of the remote A2A server")
     parser.add_argument("--provider", help="Only list models for this provider ID")
 
 
@@ -166,58 +167,24 @@ def wait(args: argparse.Namespace, env: dict[str, str]) -> int:
     task = poll_task(base_url(args, env), token, args.task_id, args.poll_interval, args.poll_timeout)
     result = compact_task(task, ok=True)
     if not result["terminal"]:
-        result["ok"] = False
-        result["error"] = "Timed out waiting for task completion"
+        result["recoverable"] = True
+        result["errorType"] = result.get("errorType") or "LOCAL_WAIT_TIMEOUT_TASK_STILL_RUNNING"
+        result["waitWindowExpired"] = True
+        result["agentInstruction"] = result.get("agentInstruction") or (
+            "The local wait window ended before the Browser Agent task reached a final result. "
+            "Do not start a duplicate task. Poll this exact taskId again with the wait command."
+        )
+        add_wait_guidance(result, "The local wait window expired; poll this same taskId again, do not resubmit the original request.")
     print_json(result)
     return task_exit_code(result, timeout_is_error=True)
 
 
 def models(args: argparse.Namespace, env: dict[str, str]) -> int:
-    config_arg = getattr(args, "config", None)
-    if config_arg:
-        return local_models(config_arg, getattr(args, "provider", None))
-
     token = require_token(args, env)
     query = f"?provider={parse_quote(args.provider)}" if args.provider else ""
     response = get_json(f"{base_url(args, env)}/models{query}", token)
     print_json(response)
     return 0
-
-
-def local_models(config_path_arg: str, provider_filter: str | None) -> int:
-    config_path = resolve_config_path(config_path_arg)
-    if not config_path:
-        print_json({"ok": False, "error": f"Could not find local config: {config_path_arg}"})
-        return 1
-
-    try:
-        config = json.loads(config_path.read_text())
-    except OSError as exc:
-        print_json({"ok": False, "error": f"Could not read config: {exc}"})
-        return 1
-    except json.JSONDecodeError as exc:
-        print_json({"ok": False, "error": f"Invalid JSON in {config_path}: {exc}"})
-        return 1
-
-    providers = compact_models(config, provider_filter)
-    print_json({"ok": True, "config": str(config_path), "providers": providers})
-    return 0
-
-
-def resolve_config_path(config_path: str | None) -> Path | None:
-    if config_path:
-        path = Path(config_path).expanduser()
-        return path if path.is_file() else None
-
-    candidates = [
-        Path.cwd() / "opencode.json",
-        Path.cwd() / "workspace" / "opencode.json",
-        Path(__file__).resolve().parents[1] / "workspace" / "opencode.json",
-    ]
-    for path in candidates:
-        if path.is_file():
-            return path
-    return None
 
 
 def load_dotenv(env_file: str | None) -> dict[str, str]:
@@ -410,17 +377,24 @@ def compact_card(card: Any) -> dict[str, Any]:
 
 def compact_task(task: dict[str, Any], *, ok: bool) -> dict[str, Any]:
     state = task.get("status", {}).get("state")
+    text = extract_text(task)
+    backend_timeout = is_backend_timeout(text)
+    terminal = state in TERMINAL_TASK_STATES and not backend_timeout
     result: dict[str, Any] = {
         "ok": ok,
         "taskId": task.get("id"),
         "contextId": task.get("contextId"),
         "state": state,
-        "terminal": state in TERMINAL_TASK_STATES,
+        "terminal": terminal,
     }
 
-    text = extract_text(task)
     if text:
         result["text"] = text
+
+    if backend_timeout:
+        add_backend_timeout_guidance(result)
+    elif not terminal:
+        add_wait_guidance(result, "Task is still running. Do not submit a duplicate task; wait on this taskId.")
 
     artifacts = compact_artifacts(task)
     if artifacts:
@@ -429,50 +403,27 @@ def compact_task(task: dict[str, Any], *, ok: bool) -> dict[str, Any]:
     return {key: value for key, value in result.items() if value is not None}
 
 
-def compact_models(config: Any, provider_filter: str | None) -> list[dict[str, Any]]:
-    if not isinstance(config, dict) or not isinstance(config.get("provider"), dict):
-        return []
-
-    providers: list[dict[str, Any]] = []
-    for provider_id, provider in sorted(config["provider"].items()):
-        if provider_filter and provider_id != provider_filter:
-            continue
-        if not isinstance(provider, dict):
-            continue
-        models = provider.get("models")
-        if not isinstance(models, dict):
-            models = {}
-
-        providers.append(
-            {
-                "providerId": provider_id,
-                "name": provider.get("name"),
-                "models": compact_provider_models(models),
-            }
-        )
-    return providers
+def is_backend_timeout(text: str | None) -> bool:
+    return bool(text and any(text.startswith(prefix) for prefix in BACKEND_TIMEOUT_PREFIXES))
 
 
-def compact_provider_models(models: dict[str, Any]) -> list[dict[str, Any]]:
-    compact: list[dict[str, Any]] = []
-    for model_id, model in sorted(models.items()):
-        if not isinstance(model, dict):
-            compact.append({"modelId": model_id})
-            continue
+def add_backend_timeout_guidance(result: dict[str, Any]) -> None:
+    result["recoverable"] = True
+    result["errorType"] = "BACKEND_REQUEST_TIMEOUT_STILL_POLL_EXISTING_TASK"
+    result["agentInstruction"] = (
+        "The Browser Agent backend timed out while waiting for the underlying worker, but this task may still be running. "
+        "Do not start a new task with the same request. Poll this exact taskId with the wait command, then report the final result."
+    )
+    add_wait_guidance(result, "Poll this same taskId; do not resubmit the original request.")
 
-        item: dict[str, Any] = {
-            "modelId": model_id,
-            "name": model.get("name"),
-        }
-        limit = model.get("limit")
-        if isinstance(limit, dict):
-            item["context"] = limit.get("context")
-            item["output"] = limit.get("output")
-        variants = model.get("variants")
-        if isinstance(variants, dict) and variants:
-            item["variants"] = sorted(variants.keys())
-        compact.append({key: value for key, value in item.items() if value is not None})
-    return compact
+
+def add_wait_guidance(result: dict[str, Any], message: str) -> None:
+    task_id = result.get("taskId")
+    if not isinstance(task_id, str) or not task_id:
+        return
+    result["nextAction"] = "wait"
+    result["nextCommand"] = f"{shlex.quote(sys.argv[0] or 'browser-agent-cli')} wait {shlex.quote(task_id)}"
+    result["nextInstruction"] = message
 
 
 def compact_artifacts(task: dict[str, Any]) -> list[dict[str, str]]:
@@ -515,11 +466,15 @@ def extract_text(task: dict[str, Any]) -> str | None:
 
 
 def is_terminal(task: dict[str, Any]) -> bool:
+    if is_backend_timeout(extract_text(task)):
+        return False
     return task.get("status", {}).get("state") in TERMINAL_TASK_STATES
 
 
 def task_exit_code(result: dict[str, Any], *, timeout_is_error: bool) -> int:
     state = result.get("state")
+    if result.get("recoverable"):
+        return 0
     if result.get("ok") is False:
         return 4 if timeout_is_error and not result.get("terminal") else 1
     if state in SUCCESS_TASK_STATES or not result.get("terminal"):
@@ -541,3 +496,7 @@ def response_body(exc: urllib.error.HTTPError) -> str | None:
 
 def print_json(value: Any) -> None:
     print(json.dumps(value, separators=(",", ":"), sort_keys=True))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -146,12 +146,6 @@ browser-agent-cli --env-file .env.coolify models
 browser-agent-cli --env-file .env.coolify models --provider dr-openai
 ```
 
-For local config inspection without connecting to a server, pass `--config`:
-
-```bash
-browser-agent-cli models --config ./workspace/opencode.json
-```
-
 Useful options:
 
 - `--url https://browser-agent.example.com`

@@ -31,6 +31,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+*.egg-info/
 
 # Node package caches
 node_modules/

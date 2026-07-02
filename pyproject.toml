@@ -11,3 +11,6 @@ dependencies = []
 
 [project.scripts]
 browser-agent-cli = "browser_agent_cli.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["browser_agent_cli*"]

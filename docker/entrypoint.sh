@@ -6,7 +6,7 @@ if [ "$(id -u)" = "0" ]; then
     /workspace \
     /data \
     /home/opencode/.cache \
-    /home/opencode/.config \
+    /home/opencode/.config/opencode \
     /home/opencode/.browser-harness \
     /home/opencode/Desktop \
     /home/opencode/.local/share/opencode/log \
@@ -16,11 +16,11 @@ if [ "$(id -u)" = "0" ]; then
   mkdir -p /tmp/.X11-unix /tmp/.ICE-unix
   chmod 1777 /tmp/.X11-unix /tmp/.ICE-unix
   chown opencode:opencode /home/opencode
+  chown opencode:opencode /home/opencode/.config
+  chown opencode:opencode /home/opencode/.config/opencode
   chown -R opencode:opencode \
-    /workspace \
     /data \
     /home/opencode/.cache \
-    /home/opencode/.config \
     /home/opencode/.browser-harness \
     /home/opencode/Desktop \
     /home/opencode/.local \
@@ -57,9 +57,9 @@ if [ -d /workspace-seed ] && [ ! -f /workspace/AGENTS.md ]; then
   cp -a /workspace-seed/. /workspace/
 fi
 
-# Always overwrite opencode.json from the seed so provider/model config tracks
-# the image on every redeploy, even when /workspace already persists data.
-if [ -f /workspace-seed/opencode.json ]; then
+# Seed opencode.json only when it is absent. User/global config should own
+# runtime settings; an existing project placeholder must not override that.
+if [ -f /workspace-seed/opencode.json ] && [ ! -e /workspace/opencode.json ]; then
   cp /workspace-seed/opencode.json /workspace/opencode.json
 fi
 

@@ -1,0 +1,216 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "server": {
+    "port": 4096,
+    "hostname": "0.0.0.0",
+    "cors": [
+      "dranzone.net",
+      "http://localhost:4096"
+    ]
+  },
+  "plugin": [
+    "@tarquinen/opencode-smart-title"
+  ],
+  "default_agent": "Build",
+  "small_model": "dr-openai/CLIProxy/gemini-3.1-flash-lite",
+  "autoupdate": true,
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 8192
+  },
+  "provider": {
+    "dr-openai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "DR LiteLLM",
+      "options": {
+        "baseURL": "https://litellm.dranzone.net/",
+        "apiKey": "{env:LITELLM_API_KEY}",
+        "setCacheKey": true
+      },
+      "models": {
+        "zai/glm-5.2": {
+          "name": "GLM-5.2",
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 1.4,
+            "output": 4.4
+          },
+          "variants": {
+            "none": {
+              "reasoningEffort": "none"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "max": {
+              "reasoningEffort": "max"
+            }
+          }
+        },
+        "cockpit/gpt-5.5": {
+          "name": "Cockpit GPT-5.5",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 5,
+            "output": 30,
+            "cache_read": 0.5
+          },
+          "variants": {
+            "none": {
+              "reasoningEffort": "none"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh"
+            }
+          }
+        },
+        "omlx/Qwen3.6-27B-oQ8-fp16-mtp": {
+          "name": "OMLX Qwen3.6 27B oQ8 fp16 MTP",
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "variants": {
+            "reasoning": {},
+            "none": {
+              "reasoningEffort": "none"
+            }
+          }
+        },
+        "CLIProxy/gemini-3.1-flash-lite": {
+          "name": "Gemini 3.1 Flash Lite",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "cost": {
+            "input": 0.25,
+            "output": 1.5
+          }
+        },
+        "CLIProxy/gemini-3-flash": {
+          "name": "Gemini 3 Flash",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "cost": {
+            "input": 0.5,
+            "output": 3
+          }
+        }
+      }
+    }
+  },
+  "permission": {
+    "external_directory": "deny",
+    "skill": {
+      "customize-opencode": "deny"
+    }
+  },
+  "agent": {
+    "Build": {
+      "mode": "primary",
+      "description": "Build",
+      "model": "dr-openai/zai/glm-5.2",
+      "temperature": 1,
+      "permission": {
+        "bash": {
+          "git push": "ask",
+          "*": "allow"
+        },
+        "edit": "allow"
+      },
+      "options": {}
+    },
+    "Build1": {
+      "mode": "primary",
+      "description": "Build 1",
+      "model": "dr-openai/cockpit/gpt-5.5",
+      "temperature": 1,
+      "permission": {
+        "bash": {
+          "git push": "ask",
+          "*": "allow"
+        },
+        "edit": "allow"
+      },
+      "options": {}
+    },
+    "Build3": {
+      "mode": "primary",
+      "description": "Build 3",
+      "model": "dr-openai/omlx/Qwen3.6-27B-oQ8-fp16-mtp",
+      "temperature": 0.1,
+      "permission": {
+        "bash": {
+          "git push": "ask",
+          "*": "allow"
+        },
+        "edit": "allow"
+      },
+      "options": {}
+    },
+    "plan": {
+      "mode": "primary",
+      "description": "Planning agent - GLM5.2",
+      "model": "dr-openai/zai/glm-5.2",
+      "temperature": 1,
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false
+      },
+      "options": {},
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+    "general": {
+      "mode": "subagent",
+      "description": "Deep reasoning and research",
+      "model": "dr-openai/zai/glm-5.2",
+      "variant": "none",
+      "temperature": 1,
+      "steps": 10,
+      "permission": {}
+    },
+    "explore": {
+      "mode": "subagent",
+      "description": "Fast codebase exploration",
+      "model": "dr-openai/zai/glm-5.2",
+      "variant": "none",
+      "temperature": 1,
+      "tools": {
+        "webfetch": false
+      },
+      "permission": {
+        "webfetch": "deny"
+      }
+    },
+    "compaction": {
+      "model": "dr-openai/CLIProxy/gemini-3-flash"
+    }
+  }
+}

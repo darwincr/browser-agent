@@ -28,6 +28,11 @@ install_required linkedin-cli
 install_required coles-cli
 install_optional facebook-cli
 
+# Coles/Camoufox currently crashes Playwright Firefox's driver on 1.60.0 when
+# Coles emits page errors without locations. Keep the shared environment on the
+# version locked by coles-cli until the upstream driver bug is fixed.
+pip install --no-cache-dir --force-reinstall 'playwright==1.59.0'
+
 python -m playwright install chromium
 python -m camoufox fetch
 chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH" "$CAMOUFOX_CACHE_DIR"

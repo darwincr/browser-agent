@@ -15,6 +15,9 @@ services:
       A2A_PUBLIC_URL: ${A2A_PUBLIC_URL:-http://localhost:18000}
       A2A_BROWSER_VIEW_URL: ${A2A_BROWSER_VIEW_URL:-http://localhost:6080/vnc.html}
       OPENCODE_HOST: ${OPENCODE_HOST:-0.0.0.0}
+      # Browser/Marketplace research can run for many minutes; opencode-a2a's
+      # default OpenCode upstream timeout is shorter than these jobs.
+      OPENCODE_TIMEOUT: ${OPENCODE_TIMEOUT:-1800}
       OPENCODE_WORKSPACE_ROOT: ${OPENCODE_WORKSPACE_ROOT:-/workspace}
       # Replace this before exposing the service outside your machine.
       A2A_STATIC_AUTH_CREDENTIALS: ${A2A_STATIC_AUTH_CREDENTIALS:-[{"scheme":"bearer","token":"change-me","principal":"local"}]}

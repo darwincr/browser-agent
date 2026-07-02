@@ -1,6 +1,6 @@
 ---
 name: facebook-cli
-description: Use Facebook through `facebook-cli` whenever the user asks to search Facebook, inspect profiles, pages, groups, marketplace, posts, comments, messages, notifications, or perform Facebook actions on the user's behalf.
+description: Use Facebook through `facebook-cli` whenever the user asks to search Facebook profiles, pages, groups, marketplace, posts, comments, messages, notifications, or perform Facebook actions on the user's behalf.
 license: MIT
 compatibility: opencode
 metadata:
@@ -9,7 +9,7 @@ metadata:
 
 ## Use This Skill For
 
-Use this skill for Facebook tasks, including search, profile or page inspection, group or marketplace inspection, posts, comments, Messenger threads, messages, notifications, and user-directed Facebook actions.
+Use this skill for Facebook tasks, including search, profiles, pages, posts, messages,  groups, marketplace search, inspect profiles/pages and user-directed Facebook actions.
 
 Do not skip this skill just because the user did not mention `facebook-cli`. If the task requires Facebook data or actions, use this skill.
 

@@ -247,6 +247,7 @@ Runtime knobs:
 - `A2A_BROWSER_VIEW_URL`: public noVNC URL advertised in the Agent Card, for example `http://localhost:6080/vnc.html`.
 - `A2A_FILE_TASK_ROOT`: task staging root, default `/workspace/a2a-tasks`.
 - `A2A_FILE_MAX_INLINE_BYTES`: maximum inline `bytes` file size, default `10485760`.
+- `OPENCODE_TIMEOUT`: max seconds `opencode-a2a` waits for OpenCode to finish a non-streaming request, default `1800` in this image.
 
 ## Provider Configuration
 

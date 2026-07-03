@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Agent-friendly CLI client for browser-agent's A2A API."""
+"""Agent-friendly CLI client for browser-agent's A2A API.
+
+Single portable executable script. Reads A2A_PUBLIC_URL and
+A2A_STATIC_AUTH_CREDENTIALS from a .env file (current directory or alongside this
+script) by default. Pure standard library; copy this one file anywhere and run it
+as `./browser-agent-cli` (or place it on your PATH).
+"""
 
 from __future__ import annotations
 
@@ -8,26 +14,27 @@ import base64
 import json
 import mimetypes
 import os
-from pathlib import Path
 import shlex
 import sys
 import time
 import urllib.error
-from urllib.parse import quote as parse_quote
 import urllib.request
+from pathlib import Path
 from typing import Any
+from urllib.parse import quote as parse_quote
 
-
-TERMINAL_TASK_STATES = frozenset({
-    "TASK_STATE_COMPLETED",
-    "TASK_STATE_CANCELED",
-    "TASK_STATE_FAILED",
-    "TASK_STATE_REJECTED",
-})
+TERMINAL_TASK_STATES = frozenset(
+    {
+        "TASK_STATE_COMPLETED",
+        "TASK_STATE_CANCELED",
+        "TASK_STATE_FAILED",
+        "TASK_STATE_REJECTED",
+    }
+)
 SUCCESS_TASK_STATES = frozenset({"TASK_STATE_COMPLETED"})
-DEFAULT_SUBMIT_WAIT_SECONDS = 240.0
+DEFAULT_SUBMIT_WAIT_SECONDS = 110.0
 DEFAULT_POLL_INTERVAL = 2.0
-DEFAULT_WAIT_TIMEOUT = 240.0
+DEFAULT_WAIT_TIMEOUT = 110.0
 BACKEND_TIMEOUT_PREFIXES = ("OpenCode request timed out",)
 
 
@@ -84,8 +91,16 @@ def add_common_arguments(parser: argparse.ArgumentParser) -> None:
         default=argparse.SUPPRESS,
         help="Path to env file with A2A_PUBLIC_URL and A2A_STATIC_AUTH_CREDENTIALS (default: .env)",
     )
-    parser.add_argument("--url", default=argparse.SUPPRESS, help="Base A2A server URL; defaults to A2A_PUBLIC_URL from --env-file")
-    parser.add_argument("--token", default=argparse.SUPPRESS, help="Bearer token; defaults to first bearer token in A2A_STATIC_AUTH_CREDENTIALS")
+    parser.add_argument(
+        "--url",
+        default=argparse.SUPPRESS,
+        help="Base A2A server URL; defaults to A2A_PUBLIC_URL from --env-file",
+    )
+    parser.add_argument(
+        "--token",
+        default=argparse.SUPPRESS,
+        help="Bearer token; defaults to first bearer token in A2A_STATIC_AUTH_CREDENTIALS",
+    )
 
 
 def add_submit_parser(
@@ -94,9 +109,19 @@ def add_submit_parser(
 ) -> None:
     parser = subparsers.add_parser("submit", parents=[common_parser], help="Submit a task and wait briefly by default")
     add_message_arguments(parser)
-    parser.add_argument("--wait-seconds", type=float, default=DEFAULT_SUBMIT_WAIT_SECONDS, help="Seconds to wait for completion (default 240)")
+    parser.add_argument(
+        "--wait-seconds",
+        type=float,
+        default=DEFAULT_SUBMIT_WAIT_SECONDS,
+        help="Seconds to wait for completion (default 110)",
+    )
     parser.add_argument("--no-wait", action="store_true", help="Return immediately after task submission")
-    parser.add_argument("--poll-interval", type=float, default=DEFAULT_POLL_INTERVAL, help="Seconds between polls while waiting (default 2)")
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=DEFAULT_POLL_INTERVAL,
+        help="Seconds between polls while waiting (default 2)",
+    )
 
 
 def add_status_parser(
@@ -113,15 +138,29 @@ def add_wait_parser(
 ) -> None:
     parser = subparsers.add_parser("wait", parents=[common_parser], help="Wait for task completion")
     parser.add_argument("task_id")
-    parser.add_argument("--poll-interval", type=float, default=DEFAULT_POLL_INTERVAL, help="Seconds between polls (default 2)")
-    parser.add_argument("--poll-timeout", type=float, default=DEFAULT_WAIT_TIMEOUT, help="Maximum seconds to wait (default 240)")
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=DEFAULT_POLL_INTERVAL,
+        help="Seconds between polls (default 2)",
+    )
+    parser.add_argument(
+        "--poll-timeout",
+        type=float,
+        default=DEFAULT_WAIT_TIMEOUT,
+        help="Maximum seconds to wait (default 110)",
+    )
 
 
 def add_models_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
     common_parser: argparse.ArgumentParser,
 ) -> None:
-    parser = subparsers.add_parser("models", parents=[common_parser], help="List provider/model IDs from the A2A server")
+    parser = subparsers.add_parser(
+        "models",
+        parents=[common_parser],
+        help="List provider/model IDs from the A2A server",
+    )
     parser.add_argument("--provider", help="Only list models for this provider ID")
 
 
@@ -176,7 +215,10 @@ def wait(args: argparse.Namespace, env: dict[str, str]) -> int:
             "The local wait window ended before the Browser Agent task reached a final result. "
             "Do not start a duplicate task. Poll this exact taskId again with the wait command."
         )
-        add_wait_guidance(result, "The local wait window expired; poll this same taskId again, do not resubmit the original request.")
+        add_wait_guidance(
+            result,
+            "The local wait window expired; poll this same taskId again, do not resubmit the original request.",
+        )
     print_json(result)
     return task_exit_code(result, timeout_is_error=True)
 
@@ -205,11 +247,10 @@ def load_dotenv(env_file: str | None) -> dict[str, str]:
 
 
 def default_env_paths() -> list[Path]:
-    script_path = Path(__file__).resolve()
+    script_dir = Path(__file__).resolve().parent
     return [
         Path.cwd() / ".env",
-        script_path.parent / ".env",
-        script_path.parent.parent / ".env",
+        script_dir / ".env",
     ]
 
 
@@ -230,7 +271,12 @@ def load_dotenv_file(env: dict[str, str], env_path: Path) -> dict[str, str]:
 def require_token(args: argparse.Namespace, env: dict[str, str]) -> str:
     token = bearer_token(args, env)
     if not token:
-        print_json({"ok": False, "error": "Missing bearer token. Set A2A_STATIC_AUTH_CREDENTIALS in --env-file or pass --token."})
+        print_json(
+            {
+                "ok": False,
+                "error": "Missing bearer token. Set A2A_STATIC_AUTH_CREDENTIALS in --env-file or pass --token.",
+            }
+        )
         raise SystemExit(1)
     return token
 
@@ -254,7 +300,11 @@ def bearer_token(args: argparse.Namespace, env: dict[str, str]) -> str | None:
         return None
 
     for credential in parsed:
-        if isinstance(credential, dict) and credential.get("scheme") == "bearer" and isinstance(credential.get("token"), str):
+        if (
+            isinstance(credential, dict)
+            and credential.get("scheme") == "bearer"
+            and isinstance(credential.get("token"), str)
+        ):
             return credential["token"]
     return None
 
@@ -293,7 +343,8 @@ def build_submit_payload(args: argparse.Namespace) -> dict[str, Any]:
 
 def file_part_from_path(path: Path) -> dict[str, Any]:
     if not path.is_file():
-        raise SystemExit(f"Attached file does not exist or is not a file: {path}")
+        print_json({"ok": False, "error": f"Attached file does not exist or is not a file: {path}"})
+        raise SystemExit(1)
     mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     return {
         "filename": path.name,
@@ -429,8 +480,9 @@ def add_backend_timeout_guidance(result: dict[str, Any]) -> None:
     result["recoverable"] = True
     result["errorType"] = "BACKEND_REQUEST_TIMEOUT_STILL_POLL_EXISTING_TASK"
     result["agentInstruction"] = (
-        "The Browser Agent backend timed out while waiting for the underlying worker, but this task may still be running. "
-        "Do not start a new task with the same request. Poll this exact taskId with the wait command, then report the final result."
+        "The Browser Agent backend timed out while waiting for the underlying worker, "
+        "but this task may still be running. Do not start a new task with the same request. "
+        "Poll this exact taskId with the wait command, then report the final result."
     )
     add_wait_guidance(result, "Poll this same taskId; do not resubmit the original request.")
 

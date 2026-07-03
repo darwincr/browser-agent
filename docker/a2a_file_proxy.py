@@ -9,17 +9,17 @@ by the agent.
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 import mimetypes
 import os
-from pathlib import Path
 import re
 import shutil
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 from urllib import error, parse, request
-import uuid
-
 
 HOST = os.environ.get("A2A_FILE_PROXY_HOST", "0.0.0.0")
 PORT = int(os.environ.get("A2A_FILE_PROXY_PORT", os.environ.get("A2A_PORT", "8000")))
@@ -234,7 +234,10 @@ def stage_file_parts(message: dict[str, Any], inputs_dir: Path) -> list[str]:
         inputs_dir.mkdir(parents=True, exist_ok=True)
 
         if isinstance(part.get("raw"), str):
-            decoded = base64.b64decode(part["raw"], validate=True)
+            try:
+                decoded = base64.b64decode(part["raw"], validate=True)
+            except binascii.Error as exc:
+                raise ProxyError(400, f"invalid base64 content for inline file {name}") from exc
             if len(decoded) > MAX_INLINE_BYTES:
                 raise ProxyError(413, f"inline file {name} exceeds {MAX_INLINE_BYTES} bytes")
             path.write_bytes(decoded)
@@ -252,9 +255,8 @@ def download_file(uri: str, path: Path) -> None:
     parsed = parse.urlparse(uri)
     if parsed.scheme not in {"http", "https"}:
         raise ProxyError(400, f"unsupported file uri scheme: {parsed.scheme}")
-    with request.urlopen(uri, timeout=300) as response:
-        with path.open("wb") as file_obj:
-            shutil.copyfileobj(response, file_obj)
+    with request.urlopen(uri, timeout=300) as response, path.open("wb") as file_obj:
+        shutil.copyfileobj(response, file_obj)
 
 
 def build_file_instruction(inputs_dir: Path, outputs_dir: Path, files: list[str]) -> str:
@@ -333,33 +335,46 @@ def augment_agent_card(data: bytes) -> bytes:
     card["name"] = os.environ.get("A2A_AGENT_NAME", "Browser Agent")
     card["description"] = os.environ.get(
         "A2A_AGENT_DESCRIPTION",
-        "A browser-enabled coding and research agent with a live noVNC desktop view, file inputs, and artifact outputs.",
+        "A browser-enabled coding and research agent with a live noVNC desktop view, "
+        "file inputs, and artifact outputs.",
     )
 
     input_modes = card.setdefault("defaultInputModes", [])
     output_modes = card.setdefault("defaultOutputModes", [])
     add_modes(input_modes, ["text/plain", "application/pdf", "text/markdown", "text/html", "application/json"])
-    add_modes(output_modes, ["text/plain", "text/markdown", "application/json", "application/pdf", "application/octet-stream"])
+    add_modes(
+        output_modes,
+        ["text/plain", "text/markdown", "application/json", "application/pdf", "application/octet-stream"],
+    )
 
     card["skills"] = [
         {
             "id": "browser-use",
             "name": "Browser and desktop automation",
-            "description": "Use a graphical browser/desktop session to visit sites, interact with pages, inspect UI state, and report results.",
+            "description": (
+                "Use a graphical browser/desktop session to visit sites, interact with pages, "
+                "inspect UI state, and report results."
+            ),
             "inputModes": input_modes.copy(),
             "outputModes": ["text/plain", "text/markdown", "application/json"],
         },
         {
             "id": "code-and-shell",
             "name": "Codebase and shell work",
-            "description": "Inspect and edit files in the mounted workspace, run commands, diagnose failures, and summarize changes.",
+            "description": (
+                "Inspect and edit files in the mounted workspace, run commands, "
+                "diagnose failures, and summarize changes."
+            ),
             "inputModes": ["text/plain", "text/markdown", "application/json"],
             "outputModes": ["text/plain", "text/markdown", "application/json"],
         },
         {
             "id": "file-artifacts",
             "name": "File inputs and artifacts",
-            "description": "Accept A2A raw/url file parts staged into the workspace and return files written to the task output directory as URL artifacts.",
+            "description": (
+                "Accept A2A raw/url file parts staged into the workspace and return files "
+                "written to the task output directory as URL artifacts."
+            ),
             "inputModes": input_modes.copy(),
             "outputModes": output_modes.copy(),
         },
@@ -452,7 +467,10 @@ def bearer_auth_allowed(authorization: str | None) -> bool:
         parsed = json.loads(credentials)
     except json.JSONDecodeError:
         return False
-    return any(isinstance(item, dict) and item.get("scheme") == "bearer" and item.get("token") == token for item in parsed)
+    return any(
+        isinstance(item, dict) and item.get("scheme") == "bearer" and item.get("token") == token
+        for item in parsed
+    )
 
 
 def unique_path(directory: Path, name: str) -> Path:
@@ -471,6 +489,7 @@ def unique_path(directory: Path, name: str) -> Path:
 def safe_name(value: str) -> str:
     name = Path(value).name if "/" in value or "\\" in value else value
     name = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip(".-")
+    name = name.replace("-.", ".")
     return name or "file"
 
 

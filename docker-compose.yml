@@ -7,7 +7,7 @@ services:
     image: custom-opencode-a2a-xfce:latest
     shm_size: "2gb"
     ports:
-      - "${A2A_HOST_PORT:-8000}:8000"
+      - "${A2A_HOST_PORT:-18000}:8000"
       - "${OPENCODE_HOST_PORT:-14096}:4096"
       - "${VNC_HOST_PORT:-5900}:5900"
       - "${NOVNC_HOST_PORT:-6080}:6080"

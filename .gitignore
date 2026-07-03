@@ -23,6 +23,12 @@ tmp/
 temp/
 .DS_Store
 
+# Build and coverage outputs
+build/
+dist/
+.coverage
+htmlcov/
+
 # Python caches
 __pycache__/
 *.py[cod]

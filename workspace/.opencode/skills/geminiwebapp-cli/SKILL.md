@@ -77,9 +77,9 @@ For Deep Research, prefer a token-efficient two-step workflow:
 1. Start the request without waiting, using the current `chats new` help to confirm syntax and including `--json`.
 2. If the JSON response includes `response.research.next_command` or `response.research.wait_command`, run that command to wait for completion.
 
-The returned wait command is preferred because it uses CLI-internal polling and compact output, so the agent receives one concise result instead of repeated status payloads. If no wait command is returned, inspect `geminiwebapp-cli chats research --help` and use `chats research <chat> --wait --compact --json` when available.
+The returned wait command is preferred because it uses CLI-internal polling and returns the completed report in one result instead of repeated status payloads. If no wait command is returned, inspect `geminiwebapp-cli chats research --help` and use `chats research <chat> --wait --json` to wait for the full report.
 
-Only fetch the full report text when needed. Compact Deep Research results may include `full_report_command`; run it when the user needs the complete report or sources rather than a status/preview.
+When the report is completed, `research.report.text` contains the full report and `research.sources` contains all sources. Use this content directly to answer the user; do not report a preview or ask the user to run another command.
 
 ## Safety
 

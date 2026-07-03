@@ -4,6 +4,8 @@ services:
       context: .
       args:
         OPENCODE_A2A_VERSION: ${OPENCODE_A2A_VERSION:-1.1.1}
+        PLAYWRIGHT_VERSION: ${PLAYWRIGHT_VERSION:-1.59.0}
+        CAMOUFOX_VERSION: ${CAMOUFOX_VERSION:-0.4.11}
     image: custom-opencode-a2a-xfce:latest
     shm_size: "2gb"
     ports:

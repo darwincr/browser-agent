@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM python:3.12-slim-bookworm
 
 ARG OPENCODE_A2A_VERSION=1.1.1
@@ -11,7 +12,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     OPENCODE_HOST=127.0.0.1 \
     OPENCODE_PORT=4096 \
     PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers \
-    CAMOUFOX_CACHE_DIR=/opt/camoufox \
     A2A_HOST=0.0.0.0 \
     A2A_PORT=8000 \
     A2A_UPSTREAM_PORT=8001 \
@@ -72,18 +72,81 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 opencode \
     && usermod -aG sudo opencode \
     && printf 'opencode ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/opencode \
     && chmod 0440 /etc/sudoers.d/opencode \
-    && mkdir -p /workspace /data /opt/playwright-browsers /opt/camoufox \
-    && chown opencode:opencode /workspace /data /opt/playwright-browsers /opt/camoufox
+    && mkdir -p /workspace /data /opt/playwright-browsers \
+    && chown opencode:opencode /workspace /data /opt/playwright-browsers
 
 RUN python -m pip install --no-cache-dir --upgrade pip "opencode-a2a==${OPENCODE_A2A_VERSION}" browser-harness \
     && npm install -g opencode-ai \
     && npm cache clean --force
 
-COPY docker/install_private_clis.sh /usr/local/bin/install-private-clis
-RUN chmod +x /usr/local/bin/install-private-clis
+# ---------------------------------------------------------------------------
+# Browser runtimes (Layer A) -- keyed ONLY on the browser version args.
+# Installed BEFORE the CLIs so touching any CLI never re-downloads Chromium or
+# Camoufox (the slowest part of the build). The browsers are fetched for these
+# exact versions and are baked into the image layer, so their install target
+# must NOT be a BuildKit cache mount (that would leave them out of the final
+# image). Only the pip wheel cache is mounted.
+#
+# camoufox is normally pulled in as a dependency of coles-cli/geminiwebapp-cli
+# (both pin `camoufox>=0.4`), so it does not exist yet at this point. Install it
+# explicitly here so `camoufox fetch` works; the pinned version satisfies their
+# `>=0.4`, so their later installs keep it and the fetched Firefox stays matched.
+# camoufox ignores cache-dir env vars and always fetches to $HOME/.cache/camoufox
+# (i.e. /home/opencode/.cache/camoufox); entrypoint.sh chowns that tree to the
+# opencode user at runtime, so no chmod is needed for it here.
+# ---------------------------------------------------------------------------
+ARG PLAYWRIGHT_VERSION=1.59.0
+ARG CAMOUFOX_VERSION=0.4.11
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install "playwright==${PLAYWRIGHT_VERSION}" "camoufox==${CAMOUFOX_VERSION}" \
+    && python -m playwright install chromium \
+    && python -m camoufox fetch \
+    && chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
 
-# Install CLIs system-wide (/usr/local/bin) so they survive the opencode-home volume mount.
-RUN install-private-clis
+# ---------------------------------------------------------------------------
+# Required private CLIs -- one layer each, auto-pinned to the current `main`.
+# Each `ADD .../commits/main` fetches that repo's latest commit; BuildKit hashes
+# the response body, so a layer only busts when that repo's main actually moves.
+# Result: bumping one CLI rebuilds only its own layer (not the others), updates
+# are automatic (no manual SHA edits), and the cache stays correct. Repos are
+# public (unauthenticated HTTPS), so no build secrets are required. Installs run
+# as root into /usr/local so the CLIs survive the opencode-home volume mount.
+# ---------------------------------------------------------------------------
+ADD https://api.github.com/repos/darwincr/geminiwebapp-cli/commits/main /tmp/geminiwebapp-cli.commit
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install "git+https://github.com/darwincr/geminiwebapp-cli.git@main"
+
+ADD https://api.github.com/repos/darwincr/linkedin-cli/commits/main /tmp/linkedin-cli.commit
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install "git+https://github.com/darwincr/linkedin-cli.git@main"
+
+ADD https://api.github.com/repos/darwincr/coles-cli/commits/main /tmp/coles-cli.commit
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install "git+https://github.com/darwincr/coles-cli.git@main"
+
+# ---------------------------------------------------------------------------
+# Optional facebook-cli -- the repo has no default branch yet, so guard the
+# install with `git ls-remote` (the build must not fail when it is unavailable).
+# NOTE: once facebook-cli has a `main` branch, migrate this to the same
+# `ADD .../commits/main` pattern above for automatic, cache-correct updates.
+# ---------------------------------------------------------------------------
+RUN --mount=type=cache,target=/root/.cache/pip \
+    if git ls-remote --exit-code https://github.com/darwincr/facebook-cli.git HEAD >/dev/null 2>&1; then \
+        echo "Installing optional facebook-cli"; \
+        pip install "git+https://github.com/darwincr/facebook-cli.git@main"; \
+    else \
+        echo "Skipping unavailable optional facebook-cli"; \
+    fi
+
+# ---------------------------------------------------------------------------
+# Re-assert the Playwright pin (Layer F). The CLIs above can pull Playwright up
+# to an incompatible version as a transitive dependency; force it back to the
+# browser-matched pin. Chromium/Camoufox were already fetched for this version
+# in Layer A, so this only swaps the Python package (no browser re-download).
+# Firefox driver 1.60.0 crashes Camoufox on some Coles pages -- keep 1.59.0.
+# ---------------------------------------------------------------------------
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --force-reinstall "playwright==${PLAYWRIGHT_VERSION}"
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy

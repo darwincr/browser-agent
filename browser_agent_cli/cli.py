@@ -145,6 +145,8 @@ def submit(args: argparse.Namespace, env: dict[str, str]) -> int:
         print_json({"ok": False, "error": "Could not extract taskId from submit response"})
         return 1
 
+    ack_submission(task_id, task.get("contextId"))
+
     wait_seconds = 0.0 if args.no_wait else max(args.wait_seconds, 0.0)
     if wait_seconds > 0 and not is_terminal(task):
         task = poll_task(base_url(args, env), token, task_id, args.poll_interval, wait_seconds)
@@ -379,7 +381,8 @@ def compact_task(task: dict[str, Any], *, ok: bool) -> dict[str, Any]:
     state = task.get("status", {}).get("state")
     text = extract_text(task)
     backend_timeout = is_backend_timeout(text)
-    terminal = state in TERMINAL_TASK_STATES and not backend_timeout
+    upstream_timeout = is_upstream_timeout(task)
+    terminal = state in TERMINAL_TASK_STATES and (not backend_timeout or upstream_timeout)
     result: dict[str, Any] = {
         "ok": ok,
         "taskId": task.get("id"),
@@ -391,7 +394,9 @@ def compact_task(task: dict[str, Any], *, ok: bool) -> dict[str, Any]:
     if text:
         result["text"] = text
 
-    if backend_timeout:
+    if upstream_timeout:
+        add_upstream_timeout_guidance(result)
+    elif backend_timeout:
         add_backend_timeout_guidance(result)
     elif not terminal:
         add_wait_guidance(result, "Task is still running. Do not submit a duplicate task; wait on this taskId.")
@@ -405,6 +410,19 @@ def compact_task(task: dict[str, Any], *, ok: bool) -> dict[str, Any]:
 
 def is_backend_timeout(text: str | None) -> bool:
     return bool(text and any(text.startswith(prefix) for prefix in BACKEND_TIMEOUT_PREFIXES))
+
+
+def is_upstream_timeout(task: dict[str, Any]) -> bool:
+    error = task.get("metadata", {}).get("opencode", {}).get("error", {})
+    return task.get("status", {}).get("state") == "TASK_STATE_FAILED" and error.get("type") == "UPSTREAM_TIMEOUT"
+
+
+def add_upstream_timeout_guidance(result: dict[str, Any]) -> None:
+    result["errorType"] = "UPSTREAM_TIMEOUT"
+    result["agentInstruction"] = (
+        "A2A hit OPENCODE_TIMEOUT and marked this task failed. Do not poll/resubmit; "
+        "check the linked OpenCode session for the final answer."
+    )
 
 
 def add_backend_timeout_guidance(result: dict[str, Any]) -> None:
@@ -466,6 +484,8 @@ def extract_text(task: dict[str, Any]) -> str | None:
 
 
 def is_terminal(task: dict[str, Any]) -> bool:
+    if is_upstream_timeout(task):
+        return True
     if is_backend_timeout(extract_text(task)):
         return False
     return task.get("status", {}).get("state") in TERMINAL_TASK_STATES
@@ -496,6 +516,14 @@ def response_body(exc: urllib.error.HTTPError) -> str | None:
 
 def print_json(value: Any) -> None:
     print(json.dumps(value, separators=(",", ":"), sort_keys=True))
+
+
+def ack_submission(task_id: str, context_id: Any) -> None:
+    ack: dict[str, Any] = {"event": "submitted", "ok": True, "taskId": task_id}
+    if context_id:
+        ack["contextId"] = context_id
+    sys.stderr.write(json.dumps(ack, separators=(",", ":"), sort_keys=True) + "\n")
+    sys.stderr.flush()
 
 
 if __name__ == "__main__":

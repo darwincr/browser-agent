@@ -170,14 +170,26 @@ def add_message_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--session-id", help="Optional metadata.shared.session.id")
     parser.add_argument("--model-provider", help="Optional metadata.shared.model.providerID")
     parser.add_argument("--model", help="Optional metadata.shared.model.modelID")
-    parser.add_argument("--directory", help="Optional metadata.opencode.directory")
+    parser.add_argument(
+        "--directory",
+        help="Target workspace directory (metadata.opencode.directory); required for submit, e.g. --directory coles",
+    )
     parser.add_argument("--file", action="append", default=[], help="Attach a local file as an inline A2A raw Part")
 
 
 def submit(args: argparse.Namespace, env: dict[str, str]) -> int:
+    directory_error = ensure_directory(args)
+    if directory_error is not None:
+        print_json(directory_error)
+        return 1
     token = require_token(args, env)
     payload = build_submit_payload(args)
-    response = post_json(f"{base_url(args, env)}/v1/message:send", token, payload)
+    response = post_json(
+        f"{base_url(args, env)}/v1/message:send",
+        token,
+        payload,
+        extra_headers=submit_extension_headers(args),
+    )
     task = extract_task(response)
     task_id = task.get("id")
     if not task_id:
@@ -264,7 +276,7 @@ def load_dotenv_file(env: dict[str, str], env_path: Path) -> dict[str, str]:
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
             value = value[1:-1]
-        env.setdefault(key, value)
+        env[key] = value
     return env
 
 
@@ -311,6 +323,19 @@ def bearer_token(args: argparse.Namespace, env: dict[str, str]) -> str | None:
 
 def base_url(args: argparse.Namespace, env: dict[str, str]) -> str:
     return (getattr(args, "url", None) or env.get("A2A_PUBLIC_URL") or "http://localhost:18000").rstrip("/")
+
+
+def ensure_directory(args: argparse.Namespace) -> dict[str, Any] | None:
+    directory = getattr(args, "directory", None)
+    if not directory or not directory.strip():
+        return {
+            "ok": False,
+            "error": (
+                "Missing --directory. Specify the target workspace directory, "
+                "for example --directory coles. The service has no default workspace."
+            ),
+        }
+    return None
 
 
 def build_submit_payload(args: argparse.Namespace) -> dict[str, Any]:
@@ -374,8 +399,14 @@ def poll_task(url: str, token: str, task_id: str, poll_interval: float, timeout:
     return task
 
 
-def post_json(url: str, token: str, payload: dict[str, Any]) -> Any:
-    request = make_json_request(url, token, payload)
+def post_json(
+    url: str,
+    token: str,
+    payload: dict[str, Any],
+    *,
+    extra_headers: dict[str, str] | None = None,
+) -> Any:
+    request = make_json_request(url, token, payload, extra_headers=extra_headers)
     with urllib.request.urlopen(request, timeout=300) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -394,18 +425,36 @@ def get_json(url: str, token: str | None, *, required_token: bool = True) -> Any
         return json.loads(response.read().decode("utf-8"))
 
 
-def make_json_request(url: str, token: str, payload: dict[str, Any]) -> urllib.request.Request:
+def make_json_request(
+    url: str,
+    token: str,
+    payload: dict[str, Any],
+    *,
+    extra_headers: dict[str, str] | None = None,
+) -> urllib.request.Request:
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "A2A-Version": "1.0",
+        "Accept": "application/json",
+    }
+    if extra_headers:
+        headers.update(extra_headers)
     return urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "A2A-Version": "1.0",
-            "Accept": "application/json",
-        },
+        headers=headers,
         method="POST",
     )
+
+
+DIRECTORY_SESSION_BINDING_EXTENSION = "urn:opencode-a2a:extension:session-binding:v1"
+
+
+def submit_extension_headers(args: argparse.Namespace) -> dict[str, str]:
+    if getattr(args, "directory", None):
+        return {"A2A-Extensions": DIRECTORY_SESSION_BINDING_EXTENSION}
+    return {}
 
 
 def extract_task(response: Any) -> dict[str, Any]:
@@ -492,8 +541,34 @@ def add_wait_guidance(result: dict[str, Any], message: str) -> None:
     if not isinstance(task_id, str) or not task_id:
         return
     result["nextAction"] = "wait"
-    result["nextCommand"] = f"{shlex.quote(sys.argv[0] or 'browser-agent-cli')} wait {shlex.quote(task_id)}"
+    result["nextCommand"] = " ".join([*base_command_args(), "wait", shlex.quote(task_id)])
     result["nextInstruction"] = message
+
+
+def base_command_args() -> list[str]:
+    args = [shlex.quote(sys.argv[0] or "browser-agent-cli")]
+    args.extend(preserved_connection_args(sys.argv[1:]))
+    return args
+
+
+def preserved_connection_args(argv: list[str]) -> list[str]:
+    preserved: list[str] = []
+    index = 0
+    while index < len(argv):
+        arg = argv[index]
+        if arg in {"--env-file", "--url", "--token"} and index + 1 < len(argv):
+            preserved.extend([arg, shlex.quote(argv[index + 1])])
+            index += 2
+            continue
+        for prefix in ("--env-file=", "--url=", "--token="):
+            if arg.startswith(prefix):
+                preserved.append(f"{prefix}{shlex.quote(arg.removeprefix(prefix))}")
+                break
+        else:
+            index += 1
+            continue
+        index += 1
+    return preserved
 
 
 def compact_artifacts(task: dict[str, Any]) -> list[dict[str, str]]:

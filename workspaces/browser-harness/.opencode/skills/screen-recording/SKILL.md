@@ -31,23 +31,23 @@ stop-recording
 Start with an explicit output path when the recording should be easy to find or preserved for another agent:
 
 ```bash
-start-recording /workspace/browser-recording.mp4
+start-recording ./recordings/login-debug.mp4
 ```
 
 ## Output Files
 
-By default, `start-recording` writes the MP4 file, log, and PID metadata in the current directory.
+By default, `start-recording` writes the MP4 file, log, and PID metadata in the current directory. The current directory is your workspace (for example `/workspaces/coles`), which the agent is allowed to write to.
 
 Optional environment variables:
 
 ```bash
 SCREEN_RECORDING_FRAMERATE=15
-SCREEN_RECORDING_OUTPUT_DIR=/workspace/recordings
-SCREEN_RECORDING_LOG_FILE=/workspace/recordings/screen-recording.log
-SCREEN_RECORDING_PID_FILE=/workspace/recordings/screen-recording.pid
+SCREEN_RECORDING_OUTPUT_DIR=./recordings
+SCREEN_RECORDING_LOG_FILE=./recordings/screen-recording.log
+SCREEN_RECORDING_PID_FILE=./recordings/screen-recording.pid
 ```
 
-Prefer writing recordings under `/workspace` so the user and downstream agents can access them. Use task-specific names such as `/workspace/recordings/login-debug.mp4` when multiple recordings may be created.
+Write recordings inside your workspace directory (the default current directory) so they stay within the paths the agent is allowed to access. When a downstream agent needs the file as an A2A artifact, write it into the task `outputs` directory provided in the request instead. Use task-specific names such as `./recordings/login-debug.mp4` when multiple recordings may be created.
 
 ## Workflow
 

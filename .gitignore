@@ -5,7 +5,9 @@
 
 # Runtime state
 data/
-workspace/a2a-tasks/
+workspaces/a2a-tasks/
+workspaces/.seeded
+workspaces/*/.git/
 *.db
 *.db-shm
 *.db-wal
@@ -13,8 +15,8 @@ workspace/a2a-tasks/
 *.sqlite3
 
 # OpenCode local state and dependencies
-workspace/.opencode/node_modules/
-workspace/.opencode/package-lock.json
+workspaces/*/.opencode/node_modules/
+workspaces/*/.opencode/package-lock.json
 
 # Logs and temporary files
 *.log

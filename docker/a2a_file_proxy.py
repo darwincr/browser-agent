@@ -26,9 +26,10 @@ PORT = int(os.environ.get("A2A_FILE_PROXY_PORT", os.environ.get("A2A_PORT", "800
 UPSTREAM = os.environ.get("A2A_FILE_PROXY_UPSTREAM", "http://127.0.0.1:8001").rstrip("/")
 PUBLIC_URL = os.environ.get("A2A_PUBLIC_URL", f"http://localhost:{PORT}").rstrip("/")
 BROWSER_VIEW_URL = os.environ.get("A2A_BROWSER_VIEW_URL", "").rstrip("/")
-WORKSPACE_ROOT = Path(os.environ.get("OPENCODE_WORKSPACE_ROOT", "/workspace"))
+WORKSPACE_ROOT = Path(os.environ.get("OPENCODE_WORKSPACE_ROOT", "/workspaces"))
 TASK_ROOT = Path(os.environ.get("A2A_FILE_TASK_ROOT", str(WORKSPACE_ROOT / "a2a-tasks")))
 MAX_INLINE_BYTES = int(os.environ.get("A2A_FILE_MAX_INLINE_BYTES", str(10 * 1024 * 1024)))
+REQUIRE_DIRECTORY = os.environ.get("A2A_REQUIRE_DIRECTORY", "1").strip().lower() not in {"0", "false", "no"}
 
 
 class ProxyError(Exception):
@@ -194,6 +195,9 @@ def prepare_payload(payload: dict[str, Any]) -> StagedPayload:
     if not message:
         return StagedPayload(payload, None, None)
 
+    if REQUIRE_DIRECTORY:
+        require_directory(message)
+
     task_id = safe_name(
         str(message.get("taskId") or message.get("contextId") or message.get("messageId") or uuid.uuid4())
     )
@@ -222,6 +226,65 @@ def message_from_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
     if isinstance(params, dict) and isinstance(params.get("message"), dict):
         return params["message"]
     return None
+
+
+def directory_from_message(message: dict[str, Any]) -> str | None:
+    metadata = message.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    opencode = metadata.get("opencode")
+    if not isinstance(opencode, dict):
+        return None
+    directory = opencode.get("directory")
+    return directory if isinstance(directory, str) else None
+
+
+def resolve_workspace_dir(directory: str) -> Path | None:
+    """Resolve a requested directory to an absolute path inside WORKSPACE_ROOT.
+
+    Returns None when the value is empty, escapes the workspace root, or points at
+    the root itself (a concrete workspace subdirectory is required). Path math only
+    - does not require the directory to exist on disk.
+    """
+    value = directory.strip()
+    if not value:
+        return None
+    requested = Path(value)
+    if not requested.is_absolute():
+        requested = WORKSPACE_ROOT / requested
+    resolved = requested.resolve()
+    root = WORKSPACE_ROOT.resolve()
+    if resolved == root:
+        return None
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return None
+    return resolved
+
+
+def require_directory(message: dict[str, Any]) -> Path:
+    """Enforce that a message targets a specific workspace.
+
+    There is no default workspace: a message without a valid
+    metadata.opencode.directory is rejected instead of silently running at the
+    workspace root.
+    """
+    directory = directory_from_message(message)
+    if not directory or not directory.strip():
+        raise ProxyError(
+            400,
+            "metadata.opencode.directory is required; specify the target workspace "
+            'directory (for example "coles").',
+        )
+    resolved = resolve_workspace_dir(directory)
+    if resolved is None:
+        raise ProxyError(
+            400,
+            f"metadata.opencode.directory {directory!r} must be a workspace directory "
+            f"inside {WORKSPACE_ROOT} (relative names like \"coles\" are resolved there).",
+        )
+    return resolved
 
 
 def stage_file_parts(message: dict[str, Any], inputs_dir: Path) -> list[str]:

@@ -14,6 +14,7 @@
   "default_agent": "Build",
   "small_model": "dr-openai/CLIProxy/gemini-3.1-flash-lite",
   "autoupdate": true,
+  "snapshot": false,
   "compaction": {
     "auto": true,
     "prune": true,
@@ -123,7 +124,10 @@
     }
   },
   "permission": {
-    "external_directory": "deny",
+    "external_directory": {
+      "*": "deny",
+      "/workspaces/a2a-tasks/**": "allow"
+    },
     "skill": {
       "customize-opencode": "deny"
     }

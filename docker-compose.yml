@@ -20,7 +20,10 @@ services:
       # Browser/Marketplace research can run for many minutes; opencode-a2a's
       # default OpenCode upstream timeout is shorter than these jobs.
       OPENCODE_TIMEOUT: ${OPENCODE_TIMEOUT:-1800}
-      OPENCODE_WORKSPACE_ROOT: ${OPENCODE_WORKSPACE_ROOT:-/workspace}
+      OPENCODE_WORKSPACE_ROOT: ${OPENCODE_WORKSPACE_ROOT:-/workspaces}
+      # Allow per-request workspace selection via metadata.opencode.directory.
+      # Requested directories must resolve inside OPENCODE_WORKSPACE_ROOT.
+      A2A_ALLOW_DIRECTORY_OVERRIDE: ${A2A_ALLOW_DIRECTORY_OVERRIDE:-true}
       # Replace this before exposing the service outside your machine.
       A2A_STATIC_AUTH_CREDENTIALS: ${A2A_STATIC_AUTH_CREDENTIALS:-[{"scheme":"bearer","token":"change-me","principal":"local"}]}
       # Optional: set a VNC password. If omitted, VNC runs without a password.
@@ -33,11 +36,10 @@ services:
       # Required: backs the dr-openai LiteLLM provider.
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
     volumes:
-      - ./workspace:/workspace
+      - ./workspaces:/workspaces
       - ./data:/data
       - opencode-home:/home/opencode
       - ./docker/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
-      - ./docker/workspace-opencode.json:/workspace/opencode.json:ro
 
 volumes:
   opencode-home:

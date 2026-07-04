@@ -1,12 +1,12 @@
 ---
-name: linkedin
-description: Use the Browser Agent A2A service for LinkedIn tasks in a pre-authenticated browser. Use for LinkedIn profile, company, post, people, recruiting, sales, networking, and research workflows through the shared browser-agent-cli.
+name: browser-harness
+description: Use the Browser Agent A2A service for generic browser automation in a pre-authenticated, visible browser. Use for arbitrary websites, page navigation, extraction, screenshots, form flows, and generic web tasks that have no dedicated site skill, through the shared browser-agent-cli.
 compatibility: "Requires Python 3.10+ and network access to the Browser Agent A2A endpoint. The shared CLI is standard-library only and reads the repository-root .env by default."
 ---
 
-# LinkedIn
+# Browser Harness
 
-Use this skill when the task involves LinkedIn in a browser that is already authenticated. The work is delegated to Browser Agent over A2A using the shared CLI.
+Use this skill for generic browser interaction on arbitrary websites when no dedicated site skill (Coles, LinkedIn, Facebook, Gemini) fits, or when the user explicitly asks for the generic browser. The work is delegated to Browser Agent over A2A using the shared CLI, which drives a real Chromium browser in a visible noVNC desktop.
 
 - Shared CLI: `./browser-agent-cli`
 - Shared env file: `./.env`
@@ -15,11 +15,13 @@ Use this skill when the task involves LinkedIn in a browser that is already auth
 
 ## Common Uses
 
-- Research LinkedIn profiles and companies
-- Inspect posts, pages, people, roles, and public activity
-- Find leads, prospects, hiring signals, and company context
-- Draft summaries or outreach notes from LinkedIn information
-- Navigate LinkedIn using the remote pre-authenticated browser
+- Visit and navigate arbitrary websites
+- Extract page content, inspect DOM, or read UI state
+- Capture screenshots and observe visual state
+- Drive multi-step page flows on sites without a dedicated skill
+- Generic web tasks that do not belong to Coles, LinkedIn, Facebook, or Gemini
+
+Prefer the dedicated site skills for their sites; use this generic browser only as a fallback or when explicitly requested.
 
 ## CLI Utilities
 
@@ -62,7 +64,7 @@ Because the task exists from that point on, a second `submit` starts a **second*
 
 ## Usage
 
-Every `submit` must target the LinkedIn workspace with `--directory linkedin`. The service has no default workspace and rejects a submit without a directory.
+Every `submit` must target the Browser Harness workspace with `--directory browser-harness`. The service has no default workspace and rejects a submit without a directory.
 
 Check the agent card:
 
@@ -76,16 +78,16 @@ Check the production Coolify agent card only when explicitly needed:
 ./browser-agent-cli --env-file .env.coolify card
 ```
 
-Submit a LinkedIn task:
+Submit a generic browser task:
 
 ```bash
-./browser-agent-cli submit --directory linkedin "Use the pre-authenticated LinkedIn browser to research this company and summarize recent hiring or growth signals."
+./browser-agent-cli submit --directory browser-harness "Open example.com in the browser, take a screenshot, and summarize what is on the page."
 ```
 
 Submit a long task and poll it:
 
 ```bash
-./browser-agent-cli submit --directory linkedin --no-wait "Research these LinkedIn profiles and summarize relevant background."
+./browser-agent-cli submit --directory browser-harness --no-wait "Navigate this multi-step signup flow and report what each step asks for."
 ./browser-agent-cli wait TASK_ID
 ```
 
@@ -94,11 +96,11 @@ If submit used `--env-file .env.coolify`, wait/status calls must use the same en
 Attach a file:
 
 ```bash
-./browser-agent-cli submit --directory linkedin --file ./companies.csv "Use LinkedIn to research these companies and return a concise table."
+./browser-agent-cli submit --directory browser-harness --file ./urls.txt "Visit each URL in this file and summarize the page."
 ```
 
 ## Fallback
 
-Use the `browser-harness` skill only if you need direct local Chrome/CDP mechanics such as screenshots, coordinate clicks, dialogs, downloads, uploads, iframe debugging, shadow DOM work, or raw CDP. Otherwise prefer this Browser Agent A2A helper.
+This workspace is itself the generic-browser fallback. For Gemini, Facebook, LinkedIn, and Coles work, use the dedicated skill and its own `--directory` instead.
 
 Treat `./.env` as sensitive if it contains a bearer token. Do not print token values.

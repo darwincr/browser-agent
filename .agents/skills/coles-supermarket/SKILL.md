@@ -11,6 +11,7 @@ Use this skill when the task involves Coles supermarket or grocery shopping rese
 - Shared CLI: `./browser-agent-cli`
 - Shared env file: `./.env`
 - Output: compact minified JSON on stdout
+- By default, use the repository-root `.env` local Docker server. Only use `--env-file .env.coolify` when the user explicitly wants the production Coolify server.
 
 ## Common Uses
 
@@ -40,7 +41,7 @@ Available subcommands:
 Treat `browser-agent-cli` like a sub-agent. A submitted task may keep running after the local CLI returns.
 
 - If output contains `terminal:false`, `nextAction:"wait"`, or `recoverable:true`, do not submit the same request again.
-- Run the returned `nextCommand` if present, or run `./browser-agent-cli wait TASK_ID` using the same `taskId`.
+- Run the returned `nextCommand` if present, or run `./browser-agent-cli wait TASK_ID` using the same `taskId` and the same connection flags (`--env-file`, `--url`, `--token`) used for submit.
 - Backend worker timeouts such as `BACKEND_REQUEST_TIMEOUT_STILL_POLL_EXISTING_TASK` mean poll the same task; they do not mean the user's request should be restarted.
 - Default waits are kept below common coding-agent tool timeouts, so a long task can require multiple `wait` calls.
 - Only start a new `submit` if the existing task reaches a true terminal failure and there is no `recoverable:true` guidance.
@@ -62,29 +63,39 @@ Because the task exists from that point on, a second `submit` starts a **second*
 
 ## Usage
 
+Every `submit` must target the Coles workspace with `--directory coles`. The service has no default workspace and rejects a submit without a directory.
+
 Check the agent card:
 
 ```bash
 ./browser-agent-cli card
 ```
 
+Check the production Coolify agent card only when explicitly needed:
+
+```bash
+./browser-agent-cli --env-file .env.coolify card
+```
+
 Submit a Coles task:
 
 ```bash
-./browser-agent-cli submit "Use the pre-authenticated Coles browser to search for Greek yoghurt specials and summarize the best options."
+./browser-agent-cli submit --directory coles "Use the pre-authenticated Coles browser to search for Greek yoghurt specials and summarize the best options."
 ```
 
 Submit a long task and poll it:
 
 ```bash
-./browser-agent-cli submit --no-wait "Build a Coles shopping list for three vegetarian dinners."
+./browser-agent-cli submit --directory coles --no-wait "Build a Coles shopping list for three vegetarian dinners."
 ./browser-agent-cli wait TASK_ID
 ```
+
+If submit used `--env-file .env.coolify`, wait/status calls must use the same env file, or use the CLI-returned `nextCommand`.
 
 Attach a file:
 
 ```bash
-./browser-agent-cli submit --file ./meal-plan.pdf "Turn this meal plan into a Coles shopping list."
+./browser-agent-cli submit --directory coles --file ./meal-plan.pdf "Turn this meal plan into a Coles shopping list."
 ```
 
 ## Fallback

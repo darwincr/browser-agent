@@ -50,7 +50,11 @@ For command groups that expose subcommands, run the deeper subcommand help befor
 
 ## Session And Sign-In
 
-`linkedin-cli` uses a bound browser session. One long-running `session open` process owns the browser; other commands connect to it. Pick a session name with `--session <name>` or `LINKEDIN_CLI_SESSION`.
+`linkedin-cli` uses its own authenticated worker browser session. One long-running `session open` process owns that browser; other `linkedin-cli` commands connect to it. Pick a session name with `--session <name>` or `LINKEDIN_CLI_SESSION`.
+
+This worker browser is separate from any generic Browser Harness desktop browser on CDP `:9222`. `linkedin-cli whoami --json` only proves the `linkedin-cli` worker session is authenticated. It does not prove the generic Browser Harness browser is signed in to LinkedIn.
+
+Use `linkedin-cli` commands for account-visible LinkedIn data. Do not use Browser Harness for LinkedIn unless the user explicitly asks for generic unauthenticated browser mechanics, or the task is only about the visible desktop browser itself.
 
 Start a session when one is not already running:
 
@@ -88,6 +92,16 @@ For each user request:
 3. Run the narrowest relevant `--help`, such as `linkedin-cli jobs --help`, `linkedin-cli posts --help`, `linkedin-cli page --help`, or a deeper subcommand help.
 4. Execute the command using the flags shown by the current help output.
 5. Use `--json` when available and summarize results for the user.
+
+## Raw Browser Tasks
+
+For ad-hoc LinkedIn tasks such as "open this URL and report the title", first look for a `linkedin-cli` verb that can inspect the requested object or URL. The authenticated LinkedIn session is only reachable through `linkedin-cli`; the generic Browser Harness browser is a different browser and may be logged out.
+
+If no `linkedin-cli` verb exists for the raw browser action, say that the CLI does not expose that authenticated browser operation instead of switching silently to Browser Harness and reporting unauthenticated state.
+
+## Filesystem Boundaries
+
+Use the installed CLI help and this skill file as the contract. Do not inspect package source, site source code, `.env` files, browser profiles, or other files outside this workspace. If behavior is unclear, run the relevant `linkedin-cli --help` command and report the missing operation.
 
 ## Safety
 

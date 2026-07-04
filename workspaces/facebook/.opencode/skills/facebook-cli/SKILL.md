@@ -57,6 +57,8 @@ facebook-cli login --interactive --wait --timeout 300
 
 After login, run `facebook-cli auth status --json` again. Proceed only when authentication is confirmed.
 
+`facebook-cli` uses an authenticated worker browser session. That worker browser is separate from any generic Browser Harness desktop browser on CDP `:9222`. `facebook-cli auth status --json` only proves the `facebook-cli` worker session is authenticated; it does not prove the generic Browser Harness browser is signed in to Facebook.
+
 If session cleanup is needed, inspect current session help first:
 
 ```bash
@@ -72,6 +74,34 @@ For each user request:
 3. Run the narrowest relevant `--help`, such as `facebook-cli search --help`, `facebook-cli posts --help`, `facebook-cli messages --help`, or a deeper subcommand help.
 4. Execute the command using the flags shown by the current help output.
 5. Use `--json` when available and summarize results for the user.
+
+## Raw Browser Tasks
+
+For ad-hoc Facebook tasks such as "open this URL and report the title", first look for a `facebook-cli` verb that can inspect the requested object or URL. The authenticated Facebook session is only reachable through `facebook-cli` or a documented workspace helper; the generic Browser Harness browser is a different browser and may be logged out.
+
+For the basic "open Facebook and report title/url" diagnostic, use the workspace helper instead of package-source introspection:
+
+```bash
+python .opencode/open_fb.py
+```
+
+For other raw authenticated browser diagnostics, use the same public API shape as that helper:
+
+```python
+from facebook_cli import worker
+from facebook_cli.session import FacebookSession
+
+worker.stop_worker("default")
+with FacebookSession("default") as s:
+    s.page.goto("https://www.facebook.com/", wait_until="domcontentloaded")
+    print({"title": s.page.title(), "url": s.page.url})
+```
+
+Stop the worker first when directly opening the persistent profile; otherwise the profile can be locked by the background worker. Use `FacebookSession` as a context manager because `__init__` does not populate `s.page`.
+
+## Filesystem Boundaries
+
+Use the installed CLI help, this skill file, and workspace helpers as the contract. Do not inspect package source, site source code, `.env` files, browser profiles, or other files outside this workspace. If behavior is unclear, run the relevant `facebook-cli --help` command and report the missing operation.
 
 ## Safety
 

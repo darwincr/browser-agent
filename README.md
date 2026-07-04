@@ -39,13 +39,44 @@ OpenCode still listens on port `4096` inside the container; Compose publishes it
 
 The Compose file mounts:
 
-- `./workspace` to `/workspace` for project files
+- `./workspaces` to `/workspaces` for the per-workspace project files
 - `./data` to `/data` for the SQLite A2A task store
 - `opencode-home` to `/home/opencode` for persisted OpenCode auth/config state
+- `./docker/opencode.json` (read-only) to the global OpenCode config
 
-For Dockerfile-based deployments such as Coolify, the image also seeds `/workspace`
-from the repository's `workspace/` directory at build time. Local Compose still
-overlays that seeded copy with the `./workspace:/workspace` bind mount.
+For Dockerfile-based deployments such as Coolify, the image also seeds `/workspaces`
+from the repository's `workspaces/` directory at build time (once, tracked by a
+`.seeded` marker). Local Compose still overlays that seeded copy with the
+`./workspaces:/workspaces` bind mount.
+
+## Workspaces
+
+Each subdirectory of `/workspaces` is an isolated OpenCode workspace with its own
+`AGENTS.md`, read-only `opencode.json`, and `.opencode/skills/`:
+
+| Directory | Dedicated skill | Also includes |
+| --- | --- | --- |
+| `coles` | `coles-cli` | `screen-recording` |
+| `linkedin` | `linkedin-cli` | `screen-recording` |
+| `facebook` | `facebook-cli` | `screen-recording` |
+| `gemini` | `geminiwebapp-cli` | `screen-recording` |
+| `browser-harness` | `browser-harness` | `screen-recording` |
+
+A request selects its workspace with `metadata.opencode.directory` (the
+`--directory` flag on `browser-agent-cli`). `opencode-a2a` resolves that value
+under `OPENCODE_WORKSPACE_ROOT` (`/workspaces`) and runs the OpenCode session in
+that directory, so only that workspace's skill, rules, and config load. There is
+**no default workspace**: a submit without a directory is rejected.
+
+Isolation and lock-down are enforced at startup by the entrypoint:
+
+- Each workspace is given its own git worktree so OpenCode's upward search for
+  config, skills, and `AGENTS.md` stops at the workspace boundary.
+- Each workspace's `opencode.json`, `AGENTS.md`, and `.opencode/` are made
+  root-owned and read-only. The agent runs as a sudo-less user, so it can read
+  but not modify them.
+- Security-critical settings (providers, permissions, the `external_directory`
+  allow-list) live in the read-only global `docker/opencode.json`.
 
 Runtime configuration lives in `.env`. The defaults publish:
 
@@ -91,7 +122,7 @@ Optional runtime settings:
 You can also pass an explicit output path:
 
 ```bash
-start-recording /workspace/demo.mp4
+start-recording ./demo.mp4
 ```
 
 ## Verify
@@ -124,11 +155,13 @@ Fetch the deployed Coolify agent card using `.env.coolify`:
 ./browser-agent-cli --env-file .env.coolify card
 ```
 
-Submit a task to the Coolify deployment. The command waits up to 110 seconds by default
-(under the common 120s shell-tool timeout) and returns compact JSON for agent consumption:
+Submit a task to the Coolify deployment. Every `submit` must select a workspace with
+`--directory` (there is no default workspace). The command waits up to 110 seconds by
+default (under the common 120s shell-tool timeout) and returns compact JSON for agent
+consumption:
 
 ```bash
-./browser-agent-cli --env-file .env.coolify submit "Say hello and describe your current browser-agent workspace."
+./browser-agent-cli --env-file .env.coolify submit --directory browser-harness "Say hello and describe your current browser-agent workspace."
 ```
 
 If the task is still running, use the returned `taskId` as input to `wait`:
@@ -160,7 +193,7 @@ Useful options:
 - `submit --session-id existing-opencode-session-id "Use this OpenCode session."`
 - `submit --model-provider provider-id --model model-id "Use this model."`
 - `models --provider provider-id`
-- `submit --directory /workspace/some-subdir "Work in this directory."`
+- `submit --directory coles "Work in the coles workspace."` (required for submit)
 - `submit --file ./path/to/input.pdf "Summarize this file."`
 - `wait --poll-timeout 600 task-id-from-submit`
 
@@ -173,13 +206,13 @@ are useful as future inputs, such as `taskId`, `contextId`, `state`, `terminal`,
 Run the script (reads `.env` for `A2A_PUBLIC_URL` and the bearer token):
 
 ```bash
-./browser-agent-cli submit "Explain what this repository does."
+./browser-agent-cli submit --directory browser-harness "Explain what this repository does."
 ```
 
 If you change the Compose bearer token, pass it explicitly:
 
 ```bash
-./browser-agent-cli submit --token your-token "What can you do?"
+./browser-agent-cli submit --directory browser-harness --token your-token "What can you do?"
 ```
 
 Useful options:
@@ -188,7 +221,7 @@ Useful options:
 - `--context-id test-conversation-1`
 - `--session-id existing-opencode-session-id`
 - `--model-provider provider-id --model model-id`
-- `--directory /workspace/some-subdir`
+- `--directory coles` (required for submit; selects the workspace)
 - `--file ./path/to/input.pdf`
 
 ## A2A File Inputs And Artifacts
@@ -196,15 +229,17 @@ Useful options:
 This image includes a lightweight A2A file proxy in front of `opencode-a2a`.
 The proxy follows A2A file conventions while keeping the upstream OpenCode agent unchanged:
 
-- Incoming `raw` or `url` file parts in `message.parts` are staged under `/workspace/a2a-tasks/<task-id>/inputs`.
+- Incoming `raw` or `url` file parts in `message.parts` are staged under `/workspaces/a2a-tasks/<task-id>/inputs`.
 - The agent receives an added instruction listing the staged input paths.
-- Files the agent writes under `/workspace/a2a-tasks/<task-id>/outputs` are returned as A2A `artifacts` with URL parts.
+- Files the agent writes under `/workspaces/a2a-tasks/<task-id>/outputs` are returned as A2A `artifacts` with URL parts.
 - Artifact files are served from `/artifacts/<task-id>/outputs/<filename>` and require the same bearer token when `A2A_STATIC_AUTH_CREDENTIALS` is configured.
+
+The `/workspaces/a2a-tasks` staging root sits outside the per-workspace directories, so the global config allows it via the `external_directory` permission while all other paths outside a workspace stay blocked.
 
 Attach a local file with the test client:
 
 ```bash
-./browser-agent-cli submit --file ./source.pdf "Summarize this file and write summary.md for the next agent."
+./browser-agent-cli submit --directory browser-harness --file ./source.pdf "Summarize this file and write summary.md for the next agent."
 ```
 
 The client sends the file as an inline A2A `raw` part:
@@ -247,7 +282,7 @@ Runtime knobs:
 
 - `A2A_UPSTREAM_PORT`: internal `opencode-a2a` port, default `8001`.
 - `A2A_BROWSER_VIEW_URL`: public noVNC URL advertised in the Agent Card, for example `http://localhost:6080/vnc.html`.
-- `A2A_FILE_TASK_ROOT`: task staging root, default `/workspace/a2a-tasks`.
+- `A2A_FILE_TASK_ROOT`: task staging root, default `/workspaces/a2a-tasks`.
 - `A2A_FILE_MAX_INLINE_BYTES`: maximum inline `bytes` file size, default `10485760`.
 - `OPENCODE_TIMEOUT`: max seconds `opencode-a2a` waits for OpenCode to finish a non-streaming request, default `1800` in this image.
 

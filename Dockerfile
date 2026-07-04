@@ -18,7 +18,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     A2A_PUBLIC_URL=http://localhost:8000 \
     OPENCODE_BASE_URL=http://127.0.0.1:4096 \
     OPENCODE_TIMEOUT=1800 \
-    OPENCODE_WORKSPACE_ROOT=/workspace \
+    OPENCODE_WORKSPACE_ROOT=/workspaces \
     BH_HOME=/home/opencode/.browser-harness \
     BROWSER_HARNESS_HOME=/home/opencode/.browser-harness \
     BU_CDP_URL=http://127.0.0.1:9222 \
@@ -55,7 +55,6 @@ RUN apt-get update \
         nodejs \
         npm \
         procps \
-        sudo \
         tini \
         x11vnc \
         xvfb \
@@ -68,12 +67,12 @@ RUN apt-get update \
 # Create the opencode user BEFORE any installs that write to /home/opencode.
 # Running subsequent installs as opencode avoids an 11-minute recursive chown
 # of ~1 GB of camoufox/playwright cache files on the overlay filesystem.
+# No sudo is granted: the agent must not be able to escalate and tamper with the
+# read-only global config or the locked per-workspace configs. Privilege drop at
+# runtime is handled by gosu in the entrypoint, not sudo.
 RUN useradd --create-home --shell /bin/bash --uid 1000 opencode \
-    && usermod -aG sudo opencode \
-    && printf 'opencode ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/opencode \
-    && chmod 0440 /etc/sudoers.d/opencode \
-    && mkdir -p /workspace /data /opt/playwright-browsers \
-    && chown opencode:opencode /workspace /data /opt/playwright-browsers
+    && mkdir -p /workspaces /data /opt/playwright-browsers \
+    && chown opencode:opencode /workspaces /data /opt/playwright-browsers
 
 RUN python -m pip install --no-cache-dir --upgrade pip "opencode-a2a==${OPENCODE_A2A_VERSION}" browser-harness \
     && npm install -g opencode-ai \
@@ -162,9 +161,9 @@ RUN chmod +x \
         /usr/local/bin/stop-recording \
         /usr/local/bin/start-browser-harness-browser
 
-COPY --chown=opencode:opencode workspace/ /workspace-seed/
+COPY --chown=opencode:opencode workspaces/ /workspaces-seed/
 
-WORKDIR /workspace
+WORKDIR /workspaces
 
 EXPOSE 8000 4096 5900 6080
 

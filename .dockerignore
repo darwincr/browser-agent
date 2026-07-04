@@ -15,10 +15,9 @@ dist
 *.egg-info
 node_modules
 data
-workspace/a2a-tasks
-workspace/.opencode/node_modules
-workspace/.opencode/package-lock.json
-workspace/.DS_Store
-workspace/.opencode/.DS_Store
-workspace/.opencode/skills/.DS_Store
+workspaces/a2a-tasks
+workspaces/.seeded
+workspaces/*/.git
+**/node_modules
+**/.DS_Store
 *.log

@@ -1,5 +1,6 @@
 import base64
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -99,3 +100,48 @@ def test_prepare_payload_enforces_directory_when_required(monkeypatch: pytest.Mo
         proxy.prepare_payload(payload)
 
     assert exc_info.value.status == 400
+
+
+def test_prepare_payload_adds_outputs_instruction_for_text_only_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(proxy, "REQUIRE_DIRECTORY", False)
+    monkeypatch.setattr(proxy, "TASK_ROOT", tmp_path.resolve())
+    payload = {"message": {"messageId": "msg-1", "parts": [{"text": "take a screenshot"}]}}
+
+    staged = proxy.prepare_payload(payload)
+
+    assert staged.task_id == "msg-1"
+    assert staged.outputs_dir == tmp_path / "msg-1" / "outputs"
+    assert staged.outputs_dir.is_dir()
+    instruction = payload["message"]["parts"][-1]["text"]
+    assert "No incoming A2A FileParts" in instruction
+    assert f"`{staged.outputs_dir}`" in instruction
+    assert payload["message"]["metadata"]["a2aFileProxy"]["taskDirectory"] == str(tmp_path / "msg-1")
+
+
+def test_augment_task_response_adds_artifacts_from_history_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task_dir = tmp_path / "msg-1"
+    outputs_dir = task_dir / "outputs"
+    outputs_dir.mkdir(parents=True)
+    (outputs_dir / "result.txt").write_text("hello")
+    monkeypatch.setattr(proxy, "TASK_ROOT", tmp_path.resolve())
+    monkeypatch.setattr(proxy, "PUBLIC_URL", "https://agent.example.com")
+    task = {
+        "id": "task-1",
+        "status": {"state": "TASK_STATE_COMPLETED"},
+        "history": [
+            {
+                "messageId": "msg-1",
+                "metadata": {"a2aFileProxy": {"taskDirectory": str(task_dir.resolve())}},
+            }
+        ],
+    }
+
+    augmented = json.loads(proxy.augment_task_response_with_artifacts(json.dumps(task).encode("utf-8")))
+
+    artifact = augmented["artifacts"][0]
+    assert artifact["artifactId"] == "result.txt"
+    assert artifact["parts"][0]["url"] == "https://agent.example.com/artifacts/msg-1/outputs/result.txt"

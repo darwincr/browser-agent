@@ -27,10 +27,11 @@ Prefer `--json` whenever available for structured output. Redirect stdout yourse
 
 ## Help Entry Points
 
-Use these installed help entry points to discover current syntax on demand:
+Use these installed help entry points to discover current syntax on demand. The list mirrors the installed CLI surface (top-level verbs plus every grouped subcommand). Run the narrowest relevant `--help` before execution.
+
+Top-level verbs (no subcommands):
 
 ```bash
-linkedin-cli session --help
 linkedin-cli login --help
 linkedin-cli whoami --help
 linkedin-cli profile --help
@@ -40,13 +41,74 @@ linkedin-cli inbox --help
 linkedin-cli thread --help
 linkedin-cli message --help
 linkedin-cli search --help
-linkedin-cli jobs --help
-linkedin-cli posts --help
-linkedin-cli notifications --help
-linkedin-cli page --help
 ```
 
-For command groups that expose subcommands, run the deeper subcommand help before execution.
+`session` group (bound browser session):
+
+```bash
+linkedin-cli session open --help
+linkedin-cli session close --help
+```
+
+`jobs` group (search, save, apply):
+
+```bash
+linkedin-cli jobs search --help
+linkedin-cli jobs saved --help
+linkedin-cli jobs show --help
+linkedin-cli jobs save --help
+linkedin-cli jobs unsave --help
+linkedin-cli jobs apply --help
+```
+
+`posts` group (read, create, edit, schedule, engage):
+
+```bash
+linkedin-cli posts profile --help
+linkedin-cli posts search --help
+linkedin-cli posts show --help
+linkedin-cli posts engagement --help
+linkedin-cli posts comments --help
+linkedin-cli posts create --help
+linkedin-cli posts edit --help
+linkedin-cli posts draft --help
+linkedin-cli posts schedule --help
+linkedin-cli posts update-schedule --help
+linkedin-cli posts scheduled --help
+linkedin-cli posts cancel --help
+linkedin-cli posts delete --help
+linkedin-cli posts comment-reply --help
+linkedin-cli posts react --help
+linkedin-cli posts comment-react --help
+```
+
+`notifications` group (list is the default; reply/react are subcommands):
+
+```bash
+linkedin-cli notifications --help
+linkedin-cli notifications reply --help
+linkedin-cli notifications react --help
+```
+
+`page` group (company page admin):
+
+```bash
+linkedin-cli page list --help
+linkedin-cli page posts --help
+linkedin-cli page post --help
+linkedin-cli page post-create --help
+linkedin-cli page post-edit --help
+linkedin-cli page post-schedule --help
+linkedin-cli page post-update-schedule --help
+linkedin-cli page post-scheduled --help
+linkedin-cli page post-cancel --help
+linkedin-cli page post-delete --help
+linkedin-cli page inbox --help
+linkedin-cli page thread --help
+linkedin-cli page reply --help
+```
+
+For any new or renamed subcommand not listed above, run `linkedin-cli <group> --help` first and use the installed CLI as the source of truth.
 
 ## Session And Sign-In
 

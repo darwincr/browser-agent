@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+work_dir="$(pwd)"
+output_dir="${SCREENSHOT_OUTPUT_DIR:-${work_dir}}"
+display="${DISPLAY:-:1}"
+geometry="${VNC_GEOMETRY:-1920x1080}"
+
+case "$display" in
+  *.*) capture_display="$display" ;;
+  *) capture_display="${display}.0" ;;
+esac
+
+mkdir -p "$output_dir"
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+output_file="${1:-${output_dir}/screenshot-${timestamp}.png}"
+output_parent="$(dirname "$output_file")"
+
+mkdir -p "$output_parent"
+
+ffmpeg \
+  -y \
+  -video_size "$geometry" \
+  -f x11grab \
+  -i "$capture_display" \
+  -frames:v 1 \
+  "$output_file" \
+  >/dev/null 2>&1
+
+printf 'Saved screenshot: %s\n' "$output_file"

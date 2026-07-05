@@ -34,9 +34,14 @@ geminiwebapp-cli session --help
 geminiwebapp-cli login --help
 geminiwebapp-cli auth --help
 geminiwebapp-cli chats --help
+geminiwebapp-cli screenshot --help
 ```
 
 For command groups that expose subcommands, run the deeper subcommand help before execution.
+
+## Screenshot
+
+Save a screenshot of the current browser page with `geminiwebapp-cli screenshot`. Useful for debugging login state, chat layout, or visually verifying a result. Use `--output` for the file path and `--json` for structured output (file path and dimensions).
 
 ## Sign-In
 

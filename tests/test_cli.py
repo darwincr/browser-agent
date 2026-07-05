@@ -111,3 +111,68 @@ def test_next_command_preserves_url_and_token(monkeypatch) -> None:
     cli.add_wait_guidance(result, "wait")
 
     assert result["nextCommand"] == "browser-agent-cli --url https://server.example --token 'secret value' wait task-1"
+
+
+def test_artifact_url_joins_base_and_path() -> None:
+    assert (
+        cli.artifact_url("https://agent.example.com/", "artifacts/task-1/outputs/result.txt")
+        == "https://agent.example.com/artifacts/task-1/outputs/result.txt"
+    )
+    assert (
+        cli.artifact_url("https://agent.example.com", "/artifacts/task-1/outputs/result.txt")
+        == "https://agent.example.com/artifacts/task-1/outputs/result.txt"
+    )
+
+
+def test_download_targets_accepts_artifact_url_and_path(monkeypatch) -> None:
+    def fail_fetch_task(*args, **kwargs):
+        raise AssertionError("task fetch should not be needed for direct artifacts")
+
+    monkeypatch.setattr(cli, "fetch_task", fail_fetch_task)
+
+    assert cli.download_targets(
+        "https://agent.example.com/artifacts/task/file.txt", "http://localhost:18000", "token"
+    ) == [{"url": "https://agent.example.com/artifacts/task/file.txt"}]
+    assert cli.download_targets("/artifacts/task/file.txt", "http://localhost:18000", "token") == [
+        {"url": "http://localhost:18000/artifacts/task/file.txt"}
+    ]
+
+
+def test_download_targets_fetches_artifacts_for_task_id(monkeypatch) -> None:
+    task = {
+        "artifacts": [
+            {
+                "name": "result",
+                "parts": [
+                    {
+                        "filename": "result.txt",
+                        "mediaType": "text/plain",
+                        "url": "http://localhost:18000/artifacts/task/result.txt",
+                    }
+                ],
+            }
+        ]
+    }
+
+    monkeypatch.setattr(cli, "fetch_task", lambda base, token, task_id: task)
+
+    assert cli.download_targets("task-1", "http://localhost:18000", "token") == [
+        {
+            "name": "result",
+            "filename": "result.txt",
+            "mediaType": "text/plain",
+            "url": "http://localhost:18000/artifacts/task/result.txt",
+        }
+    ]
+
+
+def test_safe_download_name_strips_paths_and_unsafe_characters() -> None:
+    assert cli.safe_download_name("../weird file?.txt") == "weird-file-.txt"
+    assert cli.safe_download_name("...") == "artifact"
+
+
+def test_unique_download_path_avoids_existing_files(tmp_path: Path) -> None:
+    existing = tmp_path / "result.txt"
+    existing.write_text("old")
+
+    assert cli.unique_download_path(existing, set()) == tmp_path / "result-2.txt"

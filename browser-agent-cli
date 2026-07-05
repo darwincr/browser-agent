@@ -15,6 +15,7 @@ import json
 import mimetypes
 import os
 import shlex
+import shutil
 import sys
 import time
 import urllib.error
@@ -22,6 +23,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote as parse_quote
+from urllib.parse import unquote as parse_unquote
+from urllib.parse import urlparse
 
 TERMINAL_TASK_STATES = frozenset(
     {
@@ -56,6 +59,8 @@ def main(argv: list[str] | None = None) -> int:
             return status(args, env)
         if command == "wait":
             return wait(args, env)
+        if command == "download":
+            return download(args, env)
     except urllib.error.HTTPError as exc:
         print_json({"ok": False, "error": f"HTTP {exc.code} {exc.reason}", "body": response_body(exc)})
         return 1
@@ -82,6 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_wait_parser(subparsers, common_parser)
     subparsers.add_parser("card", parents=[common_parser], help="Fetch compact A2A agent card details")
     add_models_parser(subparsers, common_parser)
+    add_download_parser(subparsers, common_parser)
     return parser
 
 
@@ -164,6 +170,23 @@ def add_models_parser(
     parser.add_argument("--provider", help="Only list models for this provider ID")
 
 
+def add_download_parser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    common_parser: argparse.ArgumentParser,
+) -> None:
+    parser = subparsers.add_parser(
+        "download",
+        parents=[common_parser],
+        help="Download artifact files from a task id, artifact URL, or /artifacts path",
+    )
+    parser.add_argument("source", help="Task id, artifact URL, or /artifacts/... path")
+    parser.add_argument(
+        "--output-dir",
+        default=".",
+        help="Directory for downloaded files (default: current directory)",
+    )
+
+
 def add_message_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("message", nargs="?", default="Explain what this repository does.")
     parser.add_argument("--context-id", help="Optional A2A contextId for conversation continuity")
@@ -240,6 +263,38 @@ def models(args: argparse.Namespace, env: dict[str, str]) -> int:
     query = f"?provider={parse_quote(args.provider)}" if args.provider else ""
     response = get_json(f"{base_url(args, env)}/models{query}", token)
     print_json(response)
+    return 0
+
+
+def download(args: argparse.Namespace, env: dict[str, str]) -> int:
+    token = require_token(args, env)
+    url = base_url(args, env)
+    targets = download_targets(args.source, url, token)
+    if not targets:
+        print_json({"ok": False, "error": f"No downloadable artifacts found for {args.source!r}"})
+        return 1
+
+    output_dir = Path(args.output_dir).expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    downloads = []
+    used_paths: set[Path] = set()
+    for target in targets:
+        filename = safe_download_name(
+            target.get("filename") or target.get("name") or filename_from_url(target["url"]) or "artifact"
+        )
+        destination = unique_download_path(output_dir / filename, used_paths)
+        used_paths.add(destination)
+        size = download_url(target["url"], token, destination)
+        downloads.append(
+            {
+                "url": target["url"],
+                "path": str(destination),
+                "bytes": size,
+                **({"mediaType": target["mediaType"]} if target.get("mediaType") else {}),
+            }
+        )
+
+    print_json({"ok": True, "downloads": downloads})
     return 0
 
 
@@ -446,6 +501,60 @@ def make_json_request(
         headers=headers,
         method="POST",
     )
+
+
+def download_targets(source: str, base: str, token: str) -> list[dict[str, str]]:
+    if is_http_url(source):
+        return [{"url": source}]
+    if source.startswith("/artifacts/") or source.startswith("artifacts/"):
+        return [{"url": artifact_url(base, source)}]
+
+    task = fetch_task(base, token, source)
+    return [artifact for artifact in compact_artifacts(task) if artifact.get("url")]
+
+
+def artifact_url(base: str, artifact_path: str) -> str:
+    path = artifact_path if artifact_path.startswith("/") else f"/{artifact_path}"
+    return f"{base.rstrip('/')}{path}"
+
+
+def download_url(url: str, token: str, destination: Path) -> int:
+    headers = {"Authorization": f"Bearer {token}"}
+    request = urllib.request.Request(url, headers=headers, method="GET")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(request, timeout=300) as response, destination.open("wb") as file_obj:
+        shutil.copyfileobj(response, file_obj)
+    return destination.stat().st_size
+
+
+def is_http_url(value: str) -> bool:
+    return urlparse(value).scheme in {"http", "https"}
+
+
+def filename_from_url(url: str) -> str | None:
+    parsed = urlparse(url)
+    name = Path(parse_unquote(parsed.path)).name
+    return name or None
+
+
+def safe_download_name(value: str) -> str:
+    name = Path(value).name if "/" in value or "\\" in value else value
+    safe = "".join(character if character.isalnum() or character in "._-" else "-" for character in name)
+    safe = safe.strip(".-")
+    return safe or "artifact"
+
+
+def unique_download_path(path: Path, used_paths: set[Path]) -> Path:
+    candidate = path
+    if candidate not in used_paths and not candidate.exists():
+        return candidate
+    stem = path.stem or "artifact"
+    suffix = path.suffix
+    for number in range(2, 1000):
+        candidate = path.with_name(f"{stem}-{number}{suffix}")
+        if candidate not in used_paths and not candidate.exists():
+            return candidate
+    raise RuntimeError(f"too many downloads named like {path.name}")
 
 
 DIRECTORY_SESSION_BINDING_EXTENSION = "urn:opencode-a2a:extension:session-binding:v1"

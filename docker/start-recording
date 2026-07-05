@@ -26,7 +26,10 @@ mkdir -p "$output_dir"
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
 output_file="${1:-${output_dir}/screen-recording-${timestamp}.mp4}"
+output_parent="$(dirname "$output_file")"
 log_file="${SCREEN_RECORDING_LOG_FILE:-${output_dir}/screen-recording.log}"
+
+mkdir -p "$output_parent"
 
 if [ -e "$log_file" ] && [ ! -w "$log_file" ]; then
   rm -f "$log_file"

@@ -124,6 +124,8 @@
     }
   },
   "permission": {
+    "question": "deny",
+    "doom_loop": "deny",
     "external_directory": {
       "*": "deny",
       "/workspaces/a2a-tasks/**": "allow"
@@ -140,8 +142,9 @@
       "temperature": 1,
       "permission": {
         "bash": {
-          "git push": "ask",
-          "*": "allow"
+          "*": "allow",
+          "git push": "deny",
+          "git push *": "deny"
         },
         "edit": "allow"
       },
@@ -154,8 +157,9 @@
       "temperature": 1,
       "permission": {
         "bash": {
-          "git push": "ask",
-          "*": "allow"
+          "*": "allow",
+          "git push": "deny",
+          "git push *": "deny"
         },
         "edit": "allow"
       },
@@ -168,8 +172,9 @@
       "temperature": 0.1,
       "permission": {
         "bash": {
-          "git push": "ask",
-          "*": "allow"
+          "*": "allow",
+          "git push": "deny",
+          "git push *": "deny"
         },
         "edit": "allow"
       },

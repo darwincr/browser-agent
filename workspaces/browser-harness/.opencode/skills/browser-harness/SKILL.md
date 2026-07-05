@@ -53,6 +53,32 @@ print(page_info())
 PY
 ```
 
+## CLI Commands
+
+The `browser-harness` CLI exposes these commands (see `browser-harness --help`):
+
+```bash
+# Version & diagnostics
+browser-harness --version           # print the installed version
+browser-harness --doctor            # diagnose install, daemon, and browser state
+browser-harness doctor              # same as --doctor
+browser-harness doctor --fix-snap   # print how to fix Snap Chromium blocking CDP (Linux)
+
+# Browser Use Cloud auth (cloud browsers only)
+browser-harness auth login                  # sign in to Browser Use Cloud
+browser-harness auth login --device-code    # sign in from SSH/headless environments
+browser-harness auth status                 # show Browser Use Cloud auth state
+browser-harness auth logout                 # remove stored Browser Use Cloud auth
+
+# Skill & telemetry
+browser-harness skill               # print the browser-harness skill text
+browser-harness telemetry status    # show anonymous telemetry opt-out state
+
+# Maintenance
+browser-harness --update [-y]       # pull the latest version (agents: pass -y)
+browser-harness --reload            # stop the daemon so next call picks up code changes
+```
+
 ## Page Workflow
 
 - Use `capture_screenshot()` first when visual state matters.

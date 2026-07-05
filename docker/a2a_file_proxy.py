@@ -105,6 +105,8 @@ class A2AFileProxy(BaseHTTPRequestHandler):
             content_type = upstream_response.headers.get("Content-Type", "application/octet-stream")
             if self.path == "/.well-known/agent-card.json":
                 data, content_type = augment_agent_card(data), "application/json"
+            elif self.path.startswith("/v1/tasks/") and "json" in content_type:
+                data = augment_task_response_with_artifacts(data)
             self.send_response(upstream_response.status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(data)))
@@ -206,9 +208,6 @@ def prepare_payload(payload: dict[str, Any]) -> StagedPayload:
     outputs_dir = task_dir / "outputs"
 
     file_descriptions = stage_file_parts(message, inputs_dir)
-    if not file_descriptions:
-        return StagedPayload(payload, task_id, outputs_dir)
-
     outputs_dir.mkdir(parents=True, exist_ok=True)
     instruction = build_file_instruction(inputs_dir, outputs_dir, file_descriptions)
     message.setdefault("parts", []).append({"text": instruction})
@@ -323,12 +322,16 @@ def download_file(uri: str, path: Path) -> None:
 
 
 def build_file_instruction(inputs_dir: Path, outputs_dir: Path, files: list[str]) -> str:
+    input_context = (
+        "Input files:\n" + "\n".join(files)
+        if files
+        else "No incoming A2A FileParts were provided for this task."
+    )
     return (
         "\nA2A file handling context:\n"
-        f"The incoming A2A FileParts have been staged under `{inputs_dir}`.\n"
-        "Input files:\n"
-        + "\n".join(files)
-        + "\nIf you produce files for another agent, write them under "
+        f"Incoming A2A FileParts, when present, are staged under `{inputs_dir}`.\n"
+        + input_context
+        + "\nIf you produce files for another agent or as task deliverables, write them under "
         f"`{outputs_dir}`. Files in that directory will be returned as A2A artifacts."
     )
 
@@ -358,6 +361,44 @@ def attach_artifacts(response: Any, task_id: str, outputs_dir: Path) -> None:
                 ],
             }
         )
+
+
+def augment_task_response_with_artifacts(data: bytes) -> bytes:
+    try:
+        task = json.loads(data.decode("utf-8"))
+    except json.JSONDecodeError:
+        return data
+    if not isinstance(task, dict):
+        return data
+
+    outputs_dir = outputs_dir_from_task(task)
+    if outputs_dir and outputs_dir.exists():
+        task_id = safe_name(outputs_dir.parent.name)
+        attach_artifacts(task, task_id, outputs_dir)
+        return json.dumps(task, indent=2).encode("utf-8")
+    return data
+
+
+def outputs_dir_from_task(task: dict[str, Any]) -> Path | None:
+    for message in task.get("history", []) or []:
+        if not isinstance(message, dict):
+            continue
+        metadata = message.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        proxy_metadata = metadata.get("a2aFileProxy")
+        if not isinstance(proxy_metadata, dict):
+            continue
+        task_directory = proxy_metadata.get("taskDirectory")
+        if not isinstance(task_directory, str):
+            continue
+        outputs_dir = (Path(task_directory) / "outputs").resolve()
+        try:
+            outputs_dir.relative_to(TASK_ROOT.resolve())
+        except ValueError:
+            continue
+        return outputs_dir
+    return None
 
 
 def task_from_response(response: Any) -> dict[str, Any] | None:

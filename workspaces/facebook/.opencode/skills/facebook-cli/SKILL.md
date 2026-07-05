@@ -27,16 +27,42 @@ Prefer `--json` whenever available for structured output. Redirect stdout yourse
 
 ## Help Entry Points
 
-Use these installed help entry points to discover current syntax on demand:
+Use these installed help entry points to discover current syntax on demand. Run the narrowest one that matches the task. The CLI surface is:
 
 ```bash
+# Top level
+facebook-cli --help
+
+# Session state
 facebook-cli session --help
+facebook-cli session clear --help
+
+# Login / authentication
 facebook-cli login --help
 facebook-cli auth --help
+facebook-cli auth status --help
+facebook-cli auth interactive --help
+
+# Profile / page inspection
 facebook-cli profile --help
+
+# Search
 facebook-cli search --help
+
+# Posts (read and write)
 facebook-cli posts --help
+facebook-cli posts feed --help
+facebook-cli posts profile --help
+facebook-cli posts group --help
+facebook-cli posts create --help
+facebook-cli posts comments --help
+facebook-cli posts comment --help
+
+# Messenger messages (read and send)
 facebook-cli messages --help
+facebook-cli messages threads --help
+facebook-cli messages read --help
+facebook-cli messages send --help
 ```
 
 For command groups that expose subcommands, run the deeper subcommand help before execution.

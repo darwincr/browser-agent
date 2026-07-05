@@ -123,6 +123,10 @@ ADD https://api.github.com/repos/darwincr/coles-cli/commits/main /tmp/coles-cli.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install "git+https://github.com/darwincr/coles-cli.git@main"
 
+ADD https://api.github.com/repos/darwincr/xero-cli/commits/main /tmp/xero-cli.commit
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install "git+https://github.com/darwincr/xero-cli.git@main"
+
 # ---------------------------------------------------------------------------
 # Optional facebook-cli -- the repo has no default branch yet, so guard the
 # install with `git ls-remote` (the build must not fail when it is unavailable).
@@ -152,6 +156,7 @@ COPY docker/a2a_file_proxy.py /usr/local/bin/a2a-file-proxy
 COPY docker/opencode-healthcheck /usr/local/bin/opencode-healthcheck
 COPY docker/start-recording /usr/local/bin/start-recording
 COPY docker/stop-recording /usr/local/bin/stop-recording
+COPY docker/take-screenshot /usr/local/bin/take-screenshot
 COPY docker/start-browser-harness-browser /usr/local/bin/start-browser-harness-browser
 RUN chmod +x \
         /usr/local/bin/entrypoint.sh \
@@ -159,6 +164,7 @@ RUN chmod +x \
         /usr/local/bin/opencode-healthcheck \
         /usr/local/bin/start-recording \
         /usr/local/bin/stop-recording \
+        /usr/local/bin/take-screenshot \
         /usr/local/bin/start-browser-harness-browser
 
 COPY --chown=opencode:opencode workspaces/ /workspaces-seed/

@@ -34,6 +34,7 @@ Available subcommands:
 - `submit`: submit a message/task and wait up to 110 seconds by default (under the common 120s shell-tool timeout)
 - `status`: fetch current state for a task ID
 - `wait`: poll a task ID until completion, failure, cancellation, rejection, or timeout
+- `download`: download artifact files from a task ID, artifact URL, or `/artifacts/...` path using the same `.env` / auth settings
 
 ## Sub-Agent Behavior
 
@@ -96,6 +97,15 @@ Attach a file:
 ```bash
 ./browser-agent-cli submit --directory linkedin --file ./companies.csv "Use LinkedIn to research these companies and return a concise table."
 ```
+
+Download returned artifacts without using `curl`:
+
+```bash
+./browser-agent-cli download TASK_ID --output-dir ./artifacts
+./browser-agent-cli download /artifacts/msg-123/outputs/report.md --output-dir ./artifacts
+```
+
+If submit used `--env-file .env.coolify`, download calls must use the same env file unless the returned artifact URL is public and unauthenticated.
 
 ## Fallback
 

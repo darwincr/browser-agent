@@ -60,6 +60,7 @@ Each subdirectory of `/workspaces` is an isolated OpenCode workspace with its ow
 | `linkedin` | `linkedin-cli` | `screen-recording` |
 | `facebook` | `facebook-cli` | `screen-recording` |
 | `gemini` | `geminiwebapp-cli` | `screen-recording` |
+| `xero` | `xero-cli` | `screen-recording` |
 | `browser-harness` | `browser-harness` | `screen-recording` |
 
 A request selects its workspace with `metadata.opencode.directory` (the
@@ -100,12 +101,16 @@ VNC_GEOMETRY=1280x720
 
 ## Screen Recording
 
-The image includes `ffmpeg` and two helper commands in the system path:
+The image includes `ffmpeg` and visual capture helper commands in the system path:
 
 ```bash
+take-screenshot
 start-recording
 stop-recording
 ```
+
+`take-screenshot` captures the current XFCE/Xvfb display and saves a PNG file in
+the current directory.
 
 `start-recording` captures the XFCE/Xvfb display and saves the MP4 file, log,
 and PID metadata in the current directory.
@@ -114,6 +119,7 @@ Run `stop-recording` from the same directory used to start the recording.
 
 Optional runtime settings:
 
+- `SCREENSHOT_OUTPUT_DIR`: screenshot output directory, default current directory.
 - `SCREEN_RECORDING_FRAMERATE`: capture framerate, default `15`.
 - `SCREEN_RECORDING_OUTPUT_DIR`: output directory, default current directory.
 - `SCREEN_RECORDING_LOG_FILE`: log path, default `./screen-recording.log`.
@@ -122,6 +128,7 @@ Optional runtime settings:
 You can also pass an explicit output path:
 
 ```bash
+take-screenshot ./page-state.png
 start-recording ./demo.mp4
 ```
 
@@ -195,6 +202,8 @@ Useful options:
 - `models --provider provider-id`
 - `submit --directory coles "Work in the coles workspace."` (required for submit)
 - `submit --file ./path/to/input.pdf "Summarize this file."`
+- `download task-id-from-submit --output-dir ./artifacts`
+- `download http://localhost:18000/artifacts/msg-123/outputs/screenshot.png --output-dir ./artifacts`
 - `wait --poll-timeout 600 task-id-from-submit`
 
 The CLI writes compact JSON to stdout. Successful outputs keep only values that
@@ -234,7 +243,7 @@ The proxy follows A2A file conventions while keeping the upstream OpenCode agent
 - Files the agent writes under `/workspaces/a2a-tasks/<task-id>/outputs` are returned as A2A `artifacts` with URL parts.
 - Artifact files are served from `/artifacts/<task-id>/outputs/<filename>` and require the same bearer token when `A2A_STATIC_AUTH_CREDENTIALS` is configured.
 
-The `/workspaces/a2a-tasks` staging root sits outside the per-workspace directories, so the global config allows it via the `external_directory` permission while all other paths outside a workspace stay blocked.
+The `/workspaces/a2a-tasks` staging root sits outside the per-workspace directories, so the global config and each workspace config allow it via the `external_directory` permission while all other paths outside a workspace stay blocked by default. The global config also denies the `question` tool so non-interactive requests fail instead of opening a permission prompt.
 
 Attach a local file with the test client:
 
@@ -276,6 +285,14 @@ When the agent writes output files to the provided `outputs` directory, the prox
     }
   ]
 }
+```
+
+Download artifacts with the same `.env` / `--url` / `--token` settings as the rest of the CLI:
+
+```bash
+./browser-agent-cli download task-id-from-submit --output-dir ./artifacts
+./browser-agent-cli download http://localhost:18000/artifacts/msg-123/outputs/summary.md --output-dir ./artifacts
+./browser-agent-cli download /artifacts/msg-123/outputs/summary.md --output-dir ./artifacts
 ```
 
 Runtime knobs:

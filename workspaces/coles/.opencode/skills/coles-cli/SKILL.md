@@ -34,6 +34,7 @@ Use these installed help entry points to discover current syntax on demand:
 ```bash
 coles session --help
 coles login --help
+coles screenshot --help
 coles auth --help
 coles orders --help
 coles products --help

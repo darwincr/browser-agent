@@ -8,7 +8,11 @@
       "*.env.example": "allow"
     },
     "external_directory": {
+      "*": "deny",
+      "/workspaces/a2a-tasks/**": "allow",
       "/tmp/**": "allow"
-    }
+    },
+    "question": "deny",
+    "doom_loop": "deny"
   }
 }

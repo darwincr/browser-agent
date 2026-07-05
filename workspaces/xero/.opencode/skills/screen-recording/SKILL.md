@@ -51,7 +51,7 @@ start-recording ./recordings/login-debug.mp4
 
 ## Output Files
 
-By default, `take-screenshot` writes a PNG file in the current directory. By default, `start-recording` writes the MP4 file, log, and PID metadata in the current directory. The current directory is your workspace (for example `/workspaces/coles`), which the agent is allowed to write to.
+By default, `take-screenshot` writes a PNG file in the current directory. By default, `start-recording` writes the MP4 file, log, and PID metadata in the current directory. The current directory is your workspace (for example `/workspaces/xero`), which the agent is allowed to write to.
 
 Optional environment variables:
 
@@ -63,7 +63,7 @@ SCREEN_RECORDING_PID_FILE=./recordings/screen-recording.pid
 SCREENSHOT_OUTPUT_DIR=./screenshots
 ```
 
-Write screenshots and recordings inside your workspace directory (the default current directory) so they stay within the paths the agent is allowed to access. When a downstream agent needs the file as an A2A artifact, write it into the task `outputs` directory provided in the request instead. Use task-specific names such as `./screenshots/checkout-state.png` or `./recordings/login-debug.mp4` when multiple captures may be created.
+Write screenshots and recordings inside your workspace directory (the default current directory) so they stay within the paths the agent is allowed to access. When a downstream agent needs the file as an A2A artifact, write it into the task `outputs` directory provided in the request instead. Use task-specific names such as `./screenshots/expense-state.png` or `./recordings/login-debug.mp4` when multiple captures may be created.
 
 ## Workflow
 

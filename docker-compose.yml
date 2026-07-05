@@ -35,6 +35,8 @@ services:
       # --- OpenCode provider secret (resolved from .env at compose time) ---
       # Required: backs the dr-openai LiteLLM provider.
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      XERO_USER: ${XERO_USER:-}
+      SECRET_XERO_PASSWORD: ${SECRET_XERO_PASSWORD:-}
     volumes:
       - ./workspaces:/workspaces
       - ./data:/data

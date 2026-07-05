@@ -125,7 +125,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 ADD https://api.github.com/repos/darwincr/xero-cli/commits/main /tmp/xero-cli.commit
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install "git+https://github.com/darwincr/xero-cli.git@main"
+    pip install "git+https://github.com/darwincr/xero-cli.git@main" \
+    && if ! command -v xero-cli >/dev/null 2>&1 && command -v xero-user-cli >/dev/null 2>&1; then \
+        ln -s "$(command -v xero-user-cli)" /usr/local/bin/xero-cli; \
+    fi
 
 # ---------------------------------------------------------------------------
 # Optional facebook-cli -- the repo has no default branch yet, so guard the

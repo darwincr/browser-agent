@@ -1,12 +1,11 @@
 ---
 name: linkedin
-description: Use the Browser Agent A2A service for LinkedIn tasks in a pre-authenticated browser. Use for LinkedIn profile, company, post, people, recruiting, sales, networking, and research workflows through the shared browser-agent-cli.
-compatibility: "Requires Python 3.10+ and network access to the Browser Agent A2A endpoint. The shared CLI is standard-library only and reads the repository-root .env by default."
+description: Use the Browser Agent A2A service via the shared browser-agent-cli for LinkedIn workspace tasks. Use for LinkedIn profiles, companies, posts, people, recruiting, sales, networking, and browser-backed LinkedIn research workflows.
 ---
 
 # LinkedIn
 
-Use this skill when the task involves LinkedIn in a browser that is already authenticated. The work is delegated to Browser Agent over A2A using the shared CLI.
+Use this skill when the task involves LinkedIn in a browser that is already authenticated. The work is delegated to Browser Agent over A2A using the shared CLI. It drives a real browser in a visible noVNC desktop.
 
 - Shared CLI: `./browser-agent-cli`
 - Shared env file: `./.env`

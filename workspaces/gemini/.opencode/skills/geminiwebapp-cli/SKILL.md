@@ -1,90 +1,120 @@
 ---
 name: geminiwebapp-cli
-description: Use Gemini Web App through `geminiwebapp-cli` whenever the user asks to ask Gemini, use Gemini models, compare with Gemini, send prompts with files, run Deep Research, inspect Gemini chats, or generate Gemini media.
+description: "Operate geminiwebapp-cli to drive Gemini (https://gemini.google.com) through a real browser: sending prompts, file attachments, media generation (images/videos/music), Deep Research. USE FOR: performing Deep Research using Google services, image and video generation, and editing or analyzing images, videos, PDFs, audio, and other files."
 license: MIT
 compatibility: opencode
 metadata:
   command: geminiwebapp-cli
 ---
 
+# geminiwebapp-cli Skill
+
+Operate `geminiwebapp-cli`, a CLI that drives https://gemini.google.com through a real Camoufox browser with a persistent local profile. No API key is used; login is done manually once and reused. The browser UI is not a stable API, so expect occasional locator maintenance.
+
 ## Use This Skill For
 
-Use this skill for Gemini Web App tasks, including asking Gemini questions, comparing this agent's answer with Gemini, sending prompts with attachments, analyzing files, running Deep Research, inspecting or continuing chats, and generating or saving Gemini images, videos, or music.
+Use this skill for Gemini Web App tasks, including asking Gemini questions, comparing this agent's answer with Gemini, sending prompts with attachments, analyzing files/images/PDFs/screenshots/audio/video, running Deep Research, inspecting chats, continuing chats, creating chats, generating or saving Gemini images, videos, or music, and using Gemini models/tools via the web app.
 
 Do not skip this skill just because the user did not mention `geminiwebapp-cli`. If the task explicitly asks for Gemini or is better handled by Gemini Web App, use this skill.
 
-## Core Rule
+## Core Conventions
 
-Keep this skill minimal. Do not rely on memorized command examples beyond auth/session basics. Before running any task-specific Gemini command, inspect the CLI's current help so the agent uses the installed CLI contract:
+- Always invoke `geminiwebapp-cli ...` from this workspace.
+- Always pass `--json` for structured, parseable agent output. Errors emit `ok: false` and `error.type`.
+- Use `--session <name>` or `$GEMINIWEBAPP_CLI_SESSION` to target a profile. Default is `default`.
+- `<chat>` accepts a full Gemini URL, `/app/...` path, Gemini chat id, or a 1-based index from `chats list`.
+- A per-session background Camoufox worker is reused across commands. The first command starts it and it exits when idle. Run `session stop` to close it without losing login.
+- `.env` in the cwd is auto-loaded; existing env vars take precedence.
 
-```bash
-geminiwebapp-cli --help
-geminiwebapp-cli <command> --help
-geminiwebapp-cli <command> <subcommand> --help
-```
+## Check Current Browser State
 
-Prefer `--json` whenever available for structured output. Redirect stdout yourself if the user asks for a file.
+These are the only commands documented inline because they are needed to assess state before acting. All accept `--session` and emit `--json`.
 
-## Help Entry Points
+| Goal | Command |
+|---|---|
+| Am I logged in? | `geminiwebapp-cli auth status --json` |
+| What chats are in the sidebar? | `geminiwebapp-cli chats list --json` |
+| What does the page look like now? | `geminiwebapp-cli screenshot --output shot.png --json` |
+| What messages are in a chat? | `geminiwebapp-cli chats read <chat> --json` |
+| What type/status is a chat, auto-detecting Deep Research? | `geminiwebapp-cli chats status <chat> --json` |
+| What is a Deep Research chat's status? | `geminiwebapp-cli chats research <chat> --json` |
 
-Use these installed help entry points to discover current syntax on demand:
+If `auth status` or any command returns `error.type: interactive_authentication_required`, follow the returned `next_command` value and complete manual login in the opened browser. Do not ask for or print credentials.
 
-```bash
-geminiwebapp-cli session --help
-geminiwebapp-cli login --help
-geminiwebapp-cli auth --help
-geminiwebapp-cli chats --help
-geminiwebapp-cli screenshot --help
-```
+## Functional Help Index
 
-For command groups that expose subcommands, run the deeper subcommand help before execution.
+For every action below, run the listed `<command> --help` to get current flags, choices, and defaults before composing the command. This skill intentionally does not duplicate flag lists. Fetch help on demand per task.
 
-## Screenshot
+### Top-Level & Subcommand Discovery
 
-Save a screenshot of the current browser page with `geminiwebapp-cli screenshot`. Useful for debugging login state, chat layout, or visually verifying a result. Use `--output` for the file path and `--json` for structured output (file path and dimensions).
+| When | Run |
+|---|---|
+| See all top-level commands | `geminiwebapp-cli --help` |
+| See chats subcommands | `geminiwebapp-cli chats --help` |
+| See auth subcommands | `geminiwebapp-cli auth --help` |
+| See session subcommands | `geminiwebapp-cli session --help` |
 
-## Sign-In
+### Authentication
 
-Before creating chats, uploading files, running Deep Research, reading chats, or generating media, verify authentication:
+| When | Run |
+|---|---|
+| Log in or verify current session; supports `--interactive`, `--wait`, `--timeout` | `geminiwebapp-cli login --help` |
+| Open Gemini for manual login; supports `--wait`, `--timeout` | `geminiwebapp-cli auth interactive --help` |
 
-```bash
-geminiwebapp-cli auth status --json
-```
+### Session Lifecycle
 
-If the session is not authenticated, start interactive login and wait for the user to complete it. Do not ask for or print credentials.
+| When | Run |
+|---|---|
+| Stop the background worker, keep the saved profile | `geminiwebapp-cli session stop --help` |
+| Delete the local browser profile, also logging out | `geminiwebapp-cli session clear --help` |
 
-```bash
-geminiwebapp-cli login --interactive --wait --timeout 300
-```
+### Send A Prompt
 
-After login, run `geminiwebapp-cli auth status --json` again. Proceed only when authentication is confirmed.
+| When | Run |
+|---|---|
+| Start a new chat and send a prompt, including files/tools/model/aspect ratio/dry run/wait/timeout | `geminiwebapp-cli chats new --help` |
+| Send a follow-up to an existing chat | `geminiwebapp-cli chats send --help` |
+| Alias of `chats send` | `geminiwebapp-cli chats continue --help` |
 
-If session cleanup or worker control is needed, inspect current session help first:
+### Media Generation & Download
 
-```bash
-geminiwebapp-cli session --help
-```
+| When | Run |
+|---|---|
+| Save generated images from a chat | `geminiwebapp-cli chats images --help` |
+| Save generated videos from a chat | `geminiwebapp-cli chats videos --help` |
+| Save generated music from a chat | `geminiwebapp-cli chats music --help` |
 
-## Basic Operation Pattern
+### Discovery
 
-For each user request:
+| When | Run |
+|---|---|
+| List sidebar chats | `geminiwebapp-cli chats list --help` |
+| List visible `+` menu options for `--tool` / `--plus-option` | `geminiwebapp-cli chats tools --help` |
 
-1. Confirm authentication with `geminiwebapp-cli auth status --json`.
-2. Run `geminiwebapp-cli --help` if you do not know the current command group.
-3. Run the narrowest relevant `--help`, such as `geminiwebapp-cli chats --help` or a deeper subcommand help.
-4. Execute the command using the flags shown by the current help output.
-5. Use `--json` when available and summarize results for the user.
+## Agent Workflow Tips
+
+- Deep Research completion: `chats new --tool deep-research` returns `next_command`, `wait_command`, `status_command`, and `recommended_poll_seconds`. Prefer `wait_command`; one blocking call returns the completed report and sources.
+- Report text is in `research.report.text`. `research.text` is only a short status summary.
+- Media generation failure is not a transport error. The command returns `ok: true` even when Gemini visibly fails. Check `response.done`; when false, inspect `response.error.type` and `response.error.message`.
+- Video/music needs longer timeouts. Use `--timeout 900` or higher for create-video / create-music workflows.
+- Music downloads intentionally select Gemini's `Audio only` option from the `Download track` submenu.
+- `--dry-run` exercises the full browser flow and stops before submitting. Use it for smoke tests without consuming generation quota.
 
 ## Deep Research
 
 For Deep Research, prefer a token-efficient two-step workflow:
 
-1. Start the request without waiting, using the current `chats new` help to confirm syntax and including `--json`.
-2. If the JSON response includes `response.research.next_command` or `response.research.wait_command`, run that command to wait for completion.
+1. Start the request using the current `chats new --help` syntax, with Deep Research selected and JSON output enabled.
+2. Run the returned `wait_command` to retrieve the completed report and sources in one result.
 
-The returned wait command is preferred because it uses CLI-internal polling and returns the completed report in one result instead of repeated status payloads. If no wait command is returned, inspect `geminiwebapp-cli chats research --help` and use `chats research <chat> --wait --json` to wait for the full report.
+When the report is completed, use `research.report.text` and `research.sources` directly to answer the user. Do not report only a preview or ask the user to run another command.
 
-When the report is completed, `research.report.text` contains the full report and `research.sources` contains all sources. Use this content directly to answer the user; do not report a preview or ask the user to run another command.
+## Environment Variables
+
+- `GEMINIWEBAPP_CLI_SESSION`: default session name.
+- `GEMINIWEBAPP_CLI_HOME`: state root, default `~/.geminiwebapp-cli`.
+- `GEMINIWEBAPP_CLI_HEADLESS`: `1`/`true`/`yes` for headless mode.
+- `GEMINIWEBAPP_CLI_LOG`: Python logging level.
 
 ## Safety
 

@@ -1,12 +1,11 @@
 ---
 name: browser-harness
-description: Use the Browser Agent A2A service for generic browser automation in a pre-authenticated, visible browser. Use for arbitrary websites, page navigation, extraction, screenshots, form flows, and generic web tasks that have no dedicated site skill, through the shared browser-agent-cli.
-compatibility: "Requires Python 3.10+ and network access to the Browser Agent A2A endpoint. The shared CLI is standard-library only and reads the repository-root .env by default."
+description: Use for arbitrary websites, page navigation, extraction, screenshots, form flows, and browser-backed web tasks that have no dedicated site skill and dont require user autnentication.
 ---
 
 # Browser Harness
 
-Use this skill for generic browser interaction on arbitrary websites when no dedicated site skill (Coles, LinkedIn, Facebook, Gemini) fits, or when the user explicitly asks for the generic browser. The work is delegated to Browser Agent over A2A using the shared CLI, which drives a real Chromium browser in a visible noVNC desktop.
+Use this skill for generic browser interaction on arbitrary websites when no dedicated site skill fits, The work is delegated to Browser Agent over A2A using the shared CLI, which drives a real Chromium browser in a visible noVNC desktop.
 
 - Shared CLI: `./browser-agent-cli`
 - Shared env file: `./.env`

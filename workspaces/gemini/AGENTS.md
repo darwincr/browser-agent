@@ -8,7 +8,7 @@ Use the **geminiwebapp-cli** skill (command `geminiwebapp-cli`) for all Gemini w
 
 If the user asks about an image, screenshot, PDF, audio, or video attachment that the current model cannot inspect directly, use the Gemini skill automatically after the authentication check. The user already asked for the analysis, so no extra confirmation is needed unless authentication or file access fails.
 
-Use the **screen-recording** skill (`start-recording` / `stop-recording`) when watching the browser makes a task easier to verify or debug — for example login flows or long-running research. Write recordings inside this workspace directory.
+Use the **screen-recording** skill (`start-recording` / `stop-recording`) when watching the browser makes a task easier to verify or debug — for example login flows or long-running research. Write recordings under `/tmp`, not inside this read-only workspace.
 
 ## Authentication
 
@@ -27,4 +27,6 @@ Do not assume Gemini is signed in. Before any Gemini request, verify authenticat
 
 - Provide concise answers for simple questions.
 - For research tasks, provide a structured summary, key findings, relevant evidence, and any caveats. Include source links or identifiers when available.
+- Use `/tmp` for scratch files, temporary downloads, screenshots, recordings, and intermediate working files.
 - If the user asks for a deliverable file for another agent or workflow, write it to the requested output directory instead of only pasting content into chat.
+- User-facing files and workflow artifacts should be written under `/workspaces/a2a-tasks/**`, usually in the output directory provided by the task.

@@ -131,18 +131,13 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     fi
 
 # ---------------------------------------------------------------------------
-# Optional facebook-cli -- the repo has no default branch yet, so guard the
-# install with `git ls-remote` (the build must not fail when it is unavailable).
-# NOTE: once facebook-cli has a `main` branch, migrate this to the same
-# `ADD .../commits/main` pattern above for automatic, cache-correct updates.
+# facebook-cli -- same `ADD .../commits/main` pattern as the other CLIs for
+# automatic, cache-correct updates. (Previously guarded with `git ls-remote`
+# because the repo had no default branch; it now has `main`.)
 # ---------------------------------------------------------------------------
+ADD https://api.github.com/repos/darwincr/facebook-cli/commits/main /tmp/facebook-cli.commit
 RUN --mount=type=cache,target=/root/.cache/pip \
-    if git ls-remote --exit-code https://github.com/darwincr/facebook-cli.git HEAD >/dev/null 2>&1; then \
-        echo "Installing optional facebook-cli"; \
-        pip install "git+https://github.com/darwincr/facebook-cli.git@main"; \
-    else \
-        echo "Skipping unavailable optional facebook-cli"; \
-    fi
+    pip install "git+https://github.com/darwincr/facebook-cli.git@main"
 
 # ---------------------------------------------------------------------------
 # Re-assert the Playwright pin (Layer F). The CLIs above can pull Playwright up

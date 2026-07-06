@@ -1,12 +1,11 @@
 ---
-name: coles-supermarket
-description: Use the Browser Agent A2A service for Coles supermarket tasks in a pre-authenticated browser. Use for grocery research, product search, price comparisons, cart planning, availability checks, recipe-to-shopping-list work, and generic Coles website browsing through the shared browser-agent-cli.
-compatibility: "Requires Python 3.10+ and network access to the Browser Agent A2A endpoint. The shared CLI is standard-library only and reads the repository-root .env by default."
+name: gemini
+description: Use for Gemini web app (https://gemini.google.com) tasks. such as Deep Research, image generation, video generation or when you need a second google search-backed response opinion about something.
 ---
 
-# Coles Supermarket
+# Gemini Web App
 
-Use this skill when the task involves Coles supermarket or grocery shopping research in a browser that is already authenticated for Coles. The work is delegated to Browser Agent over A2A using the shared CLI.
+Use this skill when you want to send a request through the Gemini web app, such as a deep research query, image generation request, video generation request or general queries to gemini. The Browser Agent has access to a web browser pre-authenticated to Gemini and can send requests using a2a to a remote agent that operates the browser for you and provides you the final output. It drives a real browser in a visible noVNC desktop.
 
 - Shared CLI: `./browser-agent-cli`
 - Shared env file: `./.env`
@@ -15,12 +14,11 @@ Use this skill when the task involves Coles supermarket or grocery shopping rese
 
 ## Common Uses
 
-- Search Coles products and categories
-- Compare prices, specials, sizes, and availability
-- Build or review shopping lists
-- Convert recipes or meal plans into Coles shopping tasks
-- Research products, dietary options, and substitutes
-- Perform generic Coles website browsing in the pre-authenticated browser
+- Ask Gemini web app to perform deep research
+- Gather, compare, and synthesize web sources
+- Produce research briefs, summaries, and reports
+- Investigate companies, markets, products, technologies, or topics
+- Generate images through the Gemini web app (e.g. "generate an image of a cat")
 
 ## CLI Utilities
 
@@ -64,7 +62,7 @@ Because the task exists from that point on, a second `submit` starts a **second*
 
 ## Usage
 
-Every `submit` must target the Coles workspace with `--directory coles`. The service has no default workspace and rejects a submit without a directory.
+Every `submit` must target the Gemini workspace with `--directory gemini`. The service has no default workspace and rejects a submit without a directory.
 
 Check the agent card:
 
@@ -78,16 +76,16 @@ Check the production Coolify agent card only when explicitly needed:
 ./browser-agent-cli --env-file .env.coolify card
 ```
 
-Submit a Coles task:
+Submit a deep research task:
 
 ```bash
-./browser-agent-cli submit --directory coles "Use the pre-authenticated Coles browser to search for Greek yoghurt specials and summarize the best options."
+./browser-agent-cli submit --directory gemini "Use the pre-authenticated Gemini web app for deep research on the current state of residential battery prices in Australia. Return sources and a concise synthesis."
 ```
 
 Submit a long task and poll it:
 
 ```bash
-./browser-agent-cli submit --directory coles --no-wait "Build a Coles shopping list for three vegetarian dinners."
+./browser-agent-cli submit --directory gemini --no-wait "Use Gemini deep research to compare the top CRM platforms for a small MSP."
 ./browser-agent-cli wait TASK_ID
 ```
 
@@ -96,14 +94,14 @@ If submit used `--env-file .env.coolify`, wait/status calls must use the same en
 Attach a file:
 
 ```bash
-./browser-agent-cli submit --directory coles --file ./meal-plan.pdf "Turn this meal plan into a Coles shopping list."
+./browser-agent-cli submit --directory gemini --file ./brief.pdf "Use this brief as context for Gemini deep research and return a report."
 ```
 
 Download returned artifacts without using `curl`:
 
 ```bash
 ./browser-agent-cli download TASK_ID --output-dir ./artifacts
-./browser-agent-cli download /artifacts/msg-123/outputs/shopping-list.md --output-dir ./artifacts
+./browser-agent-cli download /artifacts/msg-123/outputs/research-report.md --output-dir ./artifacts
 ```
 
 If submit used `--env-file .env.coolify`, download calls must use the same env file unless the returned artifact URL is public and unauthenticated.

@@ -1,129 +1,135 @@
 ---
 name: facebook-cli
-description: Use Facebook through `facebook-cli` whenever the user asks to search Facebook profiles, pages, groups, marketplace, posts, comments, messages, notifications, or perform Facebook actions on the user's behalf.
+description: "Operate Facebook through the facebook-cli command line tool. Drive a real browser profile to read profiles/search/posts/comments, create posts and comments, and read/send Messenger messages. USE FOR: reading the Facebook feed, search Facebook groups/pages/marketplace, list Messenger threads, send Facebook message, create Facebook post, comment on Facebook post, drive Facebook from CLI. DO NOT USE FOR: Instagram, WhatsApp, or other social media."
 license: MIT
 compatibility: opencode
 metadata:
   command: facebook-cli
 ---
 
+# facebook-cli Operator Skill
+
+`facebook-cli` drives a real Playwright Chromium browser profile to operate Facebook. It never reads credentials. Login is done manually in the browser window. State is stored locally under `~/.facebook-cli/profiles/<session>`.
+
 ## Use This Skill For
 
-Use this skill for Facebook tasks, including search, profiles, pages, posts, messages,  groups, marketplace search, inspect profiles/pages and user-directed Facebook actions.
+Use this skill for Facebook tasks, including reading the feed; searching Facebook profiles, pages, groups, Marketplace, videos, and reels; inspecting profiles/pages and visible recent posts; reading post comments; creating posts and comments; listing Messenger threads; reading Messenger conversations; sending Facebook messages; and user-directed Facebook actions.
 
 Do not skip this skill just because the user did not mention `facebook-cli`. If the task requires Facebook data or actions, use this skill.
 
-## Core Rule
+## Core Conventions
 
-Keep this skill minimal. Do not rely on memorized command examples beyond auth/session basics. Before running any task-specific Facebook command, inspect the CLI's current help so the agent uses the installed CLI contract:
+- Use `facebook-cli <command> [flags]` from this workspace.
+- Always append `--json` when available to get structured, parseable output. Without it the CLI prints a short human summary only.
+- Target a specific profile with `--session <name>` or `--name <name>`, or set `$FACEBOOK_CLI_SESSION`. Default session is `default`.
+- Options and defaults may change. Run the relevant `--help` before constructing any command you are unsure about.
+- Errors in JSON include `ok: false` and `error.type`. When `error.type` is `interactive_authentication_required` or `checkpoint_challenge`, use the returned `next_command` when present.
+- Commands reuse a per-session background Chromium worker. The first command starts the browser; later commands queue through one local socket so only one action touches the session at a time.
+- Relevant env vars: `FACEBOOK_CLI_HOME`, `FACEBOOK_CLI_HEADLESS`, `FACEBOOK_CLI_LOG`, and `FACEBOOK_CLI_MESSENGER_PIN`.
 
-```bash
-facebook-cli --help
-facebook-cli <command> --help
-facebook-cli <command> <subcommand> --help
-```
+## Browser State Checks
 
-Prefer `--json` whenever available for structured output. Redirect stdout yourself if the user asks for a file.
+These commands are cheap, safe, read-only, and should be run frequently, especially before any action.
 
-## Help Entry Points
+| Goal | Command | Notes |
+|---|---|---|
+| Check login state before acting | `facebook-cli auth status --json` | Returns `authenticated`, `state` (`logged_in`, `login_required`, or `checkpoint_required`), and when authenticated the visible `name` and `profile_url`. Always run this first when session state is unknown. |
+| Verify session non-interactively | `facebook-cli login --json` | Confirms the current session; returns `interactive_authentication_required` if a login form is visible, without opening a window. |
 
-Use these installed help entry points to discover current syntax on demand. Run the narrowest one that matches the task. The CLI surface is:
-
-```bash
-# Top level
-facebook-cli --help
-
-# Session state
-facebook-cli session --help
-facebook-cli session clear --help
-
-# Login / authentication
-facebook-cli login --help
-facebook-cli auth --help
-facebook-cli auth status --help
-facebook-cli auth interactive --help
-
-# Profile / page inspection
-facebook-cli profile --help
-
-# Search
-facebook-cli search --help
-
-# Posts (read and write)
-facebook-cli posts --help
-facebook-cli posts feed --help
-facebook-cli posts profile --help
-facebook-cli posts group --help
-facebook-cli posts create --help
-facebook-cli posts comments --help
-facebook-cli posts comment --help
-
-# Messenger messages (read and send)
-facebook-cli messages --help
-facebook-cli messages threads --help
-facebook-cli messages read --help
-facebook-cli messages send --help
-```
-
-For command groups that expose subcommands, run the deeper subcommand help before execution.
-
-## Sign-In
-
-Before any Facebook read or write action, verify authentication:
-
-```bash
-facebook-cli auth status --json
-```
-
-If the session is not authenticated, start interactive login and wait for the user to complete it. Do not ask for or print credentials.
+If `auth status` is not authenticated, or any command returns `interactive_authentication_required` / `checkpoint_challenge`, run:
 
 ```bash
 facebook-cli login --interactive --wait --timeout 300
 ```
 
-After login, run `facebook-cli auth status --json` again. Proceed only when authentication is confirmed.
+Complete login/checkpoint manually in the opened browser. Then re-run `facebook-cli auth status --json` to confirm.
 
-`facebook-cli` uses an authenticated worker browser session. That worker browser is separate from any generic Browser Harness desktop browser on CDP `:9222`. `facebook-cli auth status --json` only proves the `facebook-cli` worker session is authenticated; it does not prove the generic Browser Harness browser is signed in to Facebook.
+## Command Discovery
 
-If session cleanup is needed, inspect current session help first:
+| When | Run |
+|---|---|
+| You are unfamiliar with the CLI, want the full command list, or need to confirm a command exists | `facebook-cli --help` |
 
-```bash
-facebook-cli session --help
-```
+For every task below, run the listed `--help` command first to get exact positional args, flags, choices, and defaults, then run the real command with `--json` when available.
 
-## Basic Operation Pattern
+### Authentication & Manual Login
 
-For each user request:
+| Run | To learn about |
+|---|---|
+| `facebook-cli login --help` | `login` with `--interactive`, `--wait`, `--timeout` |
+| `facebook-cli auth --help` | The `auth` group and its subcommands |
+| `facebook-cli auth status --help` | `auth status` read-only state check |
+| `facebook-cli auth interactive --help` | `auth interactive` with `--wait`, `--timeout` |
 
-1. Confirm authentication with `facebook-cli auth status --json`.
-2. Run `facebook-cli --help` if you do not know the current command group.
-3. Run the narrowest relevant `--help`, such as `facebook-cli search --help`, `facebook-cli posts --help`, `facebook-cli messages --help`, or a deeper subcommand help.
-4. Execute the command using the flags shown by the current help output.
-5. Use `--json` when available and summarize results for the user.
+### Session & Profile Lifecycle
+
+| Run | To learn about |
+|---|---|
+| `facebook-cli session --help` | The `session` group |
+| `facebook-cli session clear --help` | Delete the local browser profile for a session |
+
+### Looking Up A Person Or Page
+
+| Run | To learn about |
+|---|---|
+| `facebook-cli profile --help` | `profile <handle>` with `--limit` for visible posts |
+
+### Searching Facebook
+
+| Run | To learn about |
+|---|---|
+| `facebook-cli search --help` | Search by query with type choices such as `top`, `groups`, `pages`, `marketplace`, `videos`, and `reels`; scoped group/page search; Marketplace location; limits |
+
+### Reading Feed, Timeline, And Group Posts
+
+| Run | To learn about |
+|---|---|
+| `facebook-cli posts --help` | The `posts` group and all subcommands |
+| `facebook-cli posts feed --help` | Home feed, with `--limit` |
+| `facebook-cli posts profile --help` | Profile/page timeline |
+| `facebook-cli posts group --help` | Group timeline |
+
+### Reading Comments On A Post
+
+| Run | To learn about |
+|---|---|
+| `facebook-cli posts comments --help` | Visible comments for a post URL/permalink/path |
+
+### Writing Posts And Comments
+
+These are write actions. Confirm target and text before running.
+
+| Run | To learn about |
+|---|---|
+| `facebook-cli posts create --help` | Publish a text post to feed or a group |
+| `facebook-cli posts comment --help` | Add a comment to a post |
+
+### Messenger Conversations
+
+| Run | To learn about |
+|---|---|
+| `facebook-cli messages --help` | The `messages` group and all subcommands |
+| `facebook-cli messages threads --help` | List conversations |
+| `facebook-cli messages read --help` | Read visible messages from a thread URL/path/id or current/default thread |
+| `facebook-cli messages send --help` | Send a message to a thread URL/path/id or recipient search text |
+
+## Operating Patterns
+
+- Before any action, run `facebook-cli auth status --json`. If not authenticated, run the recovery flow before retrying.
+- Read before write. When posting, commenting, or messaging, first read the target to confirm context, then perform the write.
+- Always parse `--json`; short text output is for humans only and omits fields like URLs, ids, and unread flags.
+- Do not run concurrent commands against the same `--session`; the worker serializes commands per session.
+- Selectors are conservative on purpose. If a read returns fewer items than expected, the visible browser window in non-headless mode is the debugging surface.
 
 ## Raw Browser Tasks
 
 For ad-hoc Facebook tasks such as "open this URL and report the title", first look for a `facebook-cli` verb that can inspect the requested object or URL. The authenticated Facebook session is only reachable through `facebook-cli` or a documented workspace helper; the generic Browser Harness browser is a different browser and may be logged out.
 
-For the basic "open Facebook and report title/url" diagnostic, use the workspace helper instead of package-source introspection:
+For the basic "open Facebook and report title/url" diagnostic, use the workspace helper:
 
 ```bash
 python .opencode/open_fb.py
 ```
-
-For other raw authenticated browser diagnostics, use the same public API shape as that helper:
-
-```python
-from facebook_cli import worker
-from facebook_cli.session import FacebookSession
-
-worker.stop_worker("default")
-with FacebookSession("default") as s:
-    s.page.goto("https://www.facebook.com/", wait_until="domcontentloaded")
-    print({"title": s.page.title(), "url": s.page.url})
-```
-
-Stop the worker first when directly opening the persistent profile; otherwise the profile can be locked by the background worker. Use `FacebookSession` as a context manager because `__init__` does not populate `s.page`.
 
 ## Filesystem Boundaries
 

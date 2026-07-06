@@ -45,9 +45,15 @@ The Compose file mounts:
 - `./docker/opencode.json` (read-only) to the global OpenCode config
 
 For Dockerfile-based deployments such as Coolify, the image also seeds `/workspaces`
-from the repository's `workspaces/` directory at build time (once, tracked by a
-`.seeded` marker). Local Compose still overlays that seeded copy with the
-`./workspaces:/workspaces` bind mount.
+from the repository's `workspaces/` directory at build time. Set
+`OPENCODE_REFRESH_WORKSPACES_ON_START=true` for image-based deployments with a
+persisted `/workspaces` mount. On every container start, the entrypoint then
+refreshes the source-controlled agent workspaces from that seed so repo changes
+are picked up after each redeploy. Files created inside agent workspaces are
+disposable and are removed during this refresh. The shared `/workspaces/a2a-tasks`
+staging tree is preserved and remains writable for A2A inputs and output
+artifacts. Local Compose keeps this disabled by default because it overlays the
+seeded copy with the `./workspaces:/workspaces` bind mount.
 
 ## Workspaces
 
@@ -73,9 +79,11 @@ Isolation and lock-down are enforced at startup by the entrypoint:
 
 - Each workspace is given its own git worktree so OpenCode's upward search for
   config, skills, and `AGENTS.md` stops at the workspace boundary.
-- Each workspace's `opencode.json`, `AGENTS.md`, and `.opencode/` are made
-  root-owned and read-only. The agent runs as a sudo-less user, so it can read
-  but not modify them.
+- Each source-controlled agent workspace is made root-owned and read-only. The
+  agent runs as a sudo-less user, so it can read workspace instructions, config,
+  and skills but cannot persist changes there.
+- Scratch files should be written to `/tmp`. Files intended for the user or
+  another A2A agent should be written under `/workspaces/a2a-tasks/**`.
 - Security-critical settings (providers, permissions, the `external_directory`
   allow-list) live in the read-only global `docker/opencode.json`.
 

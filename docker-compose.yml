@@ -21,6 +21,10 @@ services:
       # default OpenCode upstream timeout is shorter than these jobs.
       OPENCODE_TIMEOUT: ${OPENCODE_TIMEOUT:-1800}
       OPENCODE_WORKSPACE_ROOT: ${OPENCODE_WORKSPACE_ROOT:-/workspaces}
+      # Set true for image-based deployments with disposable persisted
+      # workspaces, such as Coolify. Keep false for local bind-mounted checkout
+      # development so startup does not rewrite ./workspaces on the host.
+      OPENCODE_REFRESH_WORKSPACES_ON_START: ${OPENCODE_REFRESH_WORKSPACES_ON_START:-false}
       # Allow per-request workspace selection via metadata.opencode.directory.
       # Requested directories must resolve inside OPENCODE_WORKSPACE_ROOT.
       A2A_ALLOW_DIRECTORY_OVERRIDE: ${A2A_ALLOW_DIRECTORY_OVERRIDE:-true}

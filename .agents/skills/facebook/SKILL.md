@@ -1,12 +1,11 @@
 ---
 name: facebook
-description: Use the Browser Agent A2A service for Facebook tasks in a pre-authenticated browser. Use for Facebook page, group, marketplace, post, profile, event, social research, and generic Facebook browsing workflows through the shared browser-agent-cli.
-compatibility: "Requires Python 3.10+ and network access to the Browser Agent A2A endpoint. The shared CLI is standard-library only and reads the repository-root .env by default."
+description: Use for Facebook pages, groups, marketplace, posts, profiles, events, social research inside facebook.
 ---
 
 # Facebook
 
-Use this skill when the task involves Facebook in a browser that is already authenticated. The work is delegated to Browser Agent over A2A using the shared CLI.
+Use this skill when the task involves Facebook in a browser that is already authenticated. The work is delegated to Browser Agent over A2A using the shared CLI. It drives a real browser in a visible noVNC desktop.
 
 - Shared CLI: `./browser-agent-cli`
 - Shared env file: `./.env`
@@ -19,7 +18,6 @@ Use this skill when the task involves Facebook in a browser that is already auth
 - Inspect public or account-visible Facebook information
 - Search Marketplace or community content when appropriate
 - Summarize social activity, posts, comments, or event details
-- Navigate Facebook using the remote pre-authenticated browser
 
 ## CLI Utilities
 

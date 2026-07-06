@@ -28,14 +28,24 @@ if [ "$(id -u)" = "0" ]; then
     /home/opencode/.local \
     /home/opencode/.vnc
 
-  # Seed the workspaces tree verbatim on first boot only. A persisted volume
-  # (e.g. Coolify) keeps its contents across redeploys, so the source-controlled
-  # layout is copied exactly once. Delete "$WORKSPACE_ROOT/.seeded" or wipe the
-  # volume to re-seed from a newer image.
-  if [ -d /workspaces-seed ] && [ ! -e "$WORKSPACE_ROOT/.seeded" ]; then
+  refresh_workspaces="${OPENCODE_REFRESH_WORKSPACES_ON_START:-false}"
+
+  # Optionally refresh source-controlled workspaces on every boot. Coolify
+  # persists the /workspaces mount across deploys, but these agent workspaces are
+  # disposable: the image seed is the source of truth. Keep only the shared A2A
+  # task staging directory, which must remain writable for input/output artifacts.
+  if [ "$refresh_workspaces" = "true" ] && [ -d /workspaces-seed ]; then
+    for existing in "$WORKSPACE_ROOT"/*; do
+      [ -e "$existing" ] || continue
+      [ "$(basename "$existing")" = "a2a-tasks" ] && continue
+      rm -rf -- "$existing"
+    done
+    cp -a /workspaces-seed/. "$WORKSPACE_ROOT"/
+  elif [ -d /workspaces-seed ] && [ ! -e "$WORKSPACE_ROOT/.seeded" ]; then
     cp -a /workspaces-seed/. "$WORKSPACE_ROOT"/
     touch "$WORKSPACE_ROOT/.seeded"
   fi
+  mkdir -p "$WORKSPACE_ROOT/a2a-tasks"
   chown -R opencode:opencode "$WORKSPACE_ROOT"
 
   # Give each workspace its own git worktree so OpenCode's upward search for
@@ -49,16 +59,28 @@ if [ "$(id -u)" = "0" ]; then
     fi
   done
 
-  # Lock each workspace's opencode.json, AGENTS.md, and .opencode/ read-only and
-  # root-owned. The agent runs as the sudo-less opencode user, so it can read
-  # these but cannot modify them. Runs every boot so a persisted volume stays
-  # locked even after an in-place edit attempt.
-  find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -name opencode.json -type f -exec chown root:root {} +
-  find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -name opencode.json -type f -exec chmod 0444 {} +
-  find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -name AGENTS.md -type f -exec chown root:root {} +
-  find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -name AGENTS.md -type f -exec chmod 0444 {} +
-  find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -type d -name .opencode -exec chown -R root:root {} +
-  find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -type d -name .opencode -exec chmod -R a-w {} +
+  if [ "$refresh_workspaces" = "true" ]; then
+    # Lock the refreshed agent workspaces read-only and root-owned. The agent
+    # runs as the sudo-less opencode user, so task output should go to /tmp or
+    # the writable /workspaces/a2a-tasks artifact staging tree instead.
+    for dir in "$WORKSPACE_ROOT"/*/; do
+      [ -f "${dir}opencode.json" ] || continue
+      chown -R root:root "$dir"
+      chmod -R a-w "$dir"
+    done
+    chown root:root "$WORKSPACE_ROOT"
+    chmod 0555 "$WORKSPACE_ROOT"
+  else
+    # Lock only control files for local bind-mounted development workspaces.
+    find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -name opencode.json -type f -exec chown root:root {} +
+    find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -name opencode.json -type f -exec chmod 0444 {} +
+    find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -name AGENTS.md -type f -exec chown root:root {} +
+    find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -name AGENTS.md -type f -exec chmod 0444 {} +
+    find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -type d -name .opencode -exec chown -R root:root {} +
+    find "$WORKSPACE_ROOT" -mindepth 2 -maxdepth 2 -type d -name .opencode -exec chmod -R a-w {} +
+  fi
+  chown -R opencode:opencode "$WORKSPACE_ROOT/a2a-tasks"
+  chmod 0755 "$WORKSPACE_ROOT/a2a-tasks"
 
   exec gosu opencode "$0" "$@"
 fi

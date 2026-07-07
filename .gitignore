@@ -5,6 +5,7 @@
 
 # Runtime state
 data/
+artifacts/
 workspaces/a2a-tasks/
 workspaces/.seeded
 workspaces/*/.git/

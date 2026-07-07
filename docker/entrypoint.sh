@@ -82,6 +82,24 @@ if [ "$(id -u)" = "0" ]; then
   chown -R opencode:opencode "$WORKSPACE_ROOT/a2a-tasks"
   chmod 0755 "$WORKSPACE_ROOT/a2a-tasks"
 
+  # Compare this image's baked CLI SHAs to the last started image. Coolify shows
+  # this in application logs, so stay silent unless a deployed CLI actually moved.
+  if [ -s /etc/cli-build-summary ] && [ -s /data/cli-build-summary.last ]; then
+    updates="$(join -j 1 <(sort /data/cli-build-summary.last) <(sort /etc/cli-build-summary) | awk '$2 != $3 { printf "%s: updated %.12s -> %.12s\n", $1, $2, $3 }')"
+    if [ -n "$updates" ]; then
+      echo ""
+      echo "=== CLI updates applied in this deployment ==="
+      printf '%s\n' "$updates"
+      echo "============================================="
+      echo ""
+    fi
+  fi
+
+  if [ -s /etc/cli-build-summary ]; then
+    cp /etc/cli-build-summary /data/cli-build-summary.last
+    chown opencode:opencode /data/cli-build-summary.last
+  fi
+
   exec gosu opencode "$0" "$@"
 fi
 

@@ -111,21 +111,33 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # public (unauthenticated HTTPS), so no build secrets are required. Installs run
 # as root into /usr/local so the CLIs survive the opencode-home volume mount.
 # ---------------------------------------------------------------------------
+# Helper that prints a visible banner when a CLI's main branch moves and keeps
+# /etc/cli-build-summary up to date for the entrypoint to print on startup.
+COPY --chmod=0755 docker/check-cli-update.sh /usr/local/bin/check-cli-update.sh
+
 ADD https://api.github.com/repos/darwincr/geminiwebapp-cli/commits/main /tmp/geminiwebapp-cli.commit
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install "git+https://github.com/darwincr/geminiwebapp-cli.git@main"
+    --mount=type=cache,target=/root/.cache/cli-shas,id=cli-shas \
+    check-cli-update.sh geminiwebapp-cli /tmp/geminiwebapp-cli.commit /root/.cache/cli-shas \
+    && pip install "git+https://github.com/darwincr/geminiwebapp-cli.git@main"
 
 ADD https://api.github.com/repos/darwincr/linkedin-cli/commits/main /tmp/linkedin-cli.commit
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install "git+https://github.com/darwincr/linkedin-cli.git@main"
+    --mount=type=cache,target=/root/.cache/cli-shas,id=cli-shas \
+    check-cli-update.sh linkedin-cli /tmp/linkedin-cli.commit /root/.cache/cli-shas \
+    && pip install "git+https://github.com/darwincr/linkedin-cli.git@main"
 
 ADD https://api.github.com/repos/darwincr/coles-cli/commits/main /tmp/coles-cli.commit
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install "git+https://github.com/darwincr/coles-cli.git@main"
+    --mount=type=cache,target=/root/.cache/cli-shas,id=cli-shas \
+    check-cli-update.sh coles-cli /tmp/coles-cli.commit /root/.cache/cli-shas \
+    && pip install "git+https://github.com/darwincr/coles-cli.git@main"
 
 ADD https://api.github.com/repos/darwincr/xero-cli/commits/main /tmp/xero-cli.commit
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install "git+https://github.com/darwincr/xero-cli.git@main" \
+    --mount=type=cache,target=/root/.cache/cli-shas,id=cli-shas \
+    check-cli-update.sh xero-cli /tmp/xero-cli.commit /root/.cache/cli-shas \
+    && pip install "git+https://github.com/darwincr/xero-cli.git@main" \
     && if ! command -v xero-cli >/dev/null 2>&1 && command -v xero-user-cli >/dev/null 2>&1; then \
         ln -s "$(command -v xero-user-cli)" /usr/local/bin/xero-cli; \
     fi
@@ -137,7 +149,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # ---------------------------------------------------------------------------
 ADD https://api.github.com/repos/darwincr/facebook-cli/commits/main /tmp/facebook-cli.commit
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install "git+https://github.com/darwincr/facebook-cli.git@main"
+    --mount=type=cache,target=/root/.cache/cli-shas,id=cli-shas \
+    check-cli-update.sh facebook-cli /tmp/facebook-cli.commit /root/.cache/cli-shas \
+    && pip install "git+https://github.com/darwincr/facebook-cli.git@main"
 
 # ---------------------------------------------------------------------------
 # Re-assert the Playwright pin (Layer F). The CLIs above can pull Playwright up

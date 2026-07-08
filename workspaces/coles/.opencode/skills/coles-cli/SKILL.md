@@ -22,29 +22,13 @@ Do not skip this skill just because the user did not mention `coles`. If the tas
 - Use `coles ...` from this workspace.
 - Prefer `--json` for machine-readable output. Plain text output is a short human summary.
 - Before running any command whose flags you are not certain of, run that command's `--help` first.
-- The CLI keeps a persistent browser profile and a background worker per session name. The worker survives between commands so login state is reused.
-- `coles session stop` closes the browser worker without deleting login/profile state.
-- `coles session clear` deletes the local browser profile and login state for a session. Use only when login/profile state should be destroyed.
+- The CLI keeps a persistent browser profile and a background worker per session name. The worker survives between commands so login state is reused. Manage worker/profile lifecycle through the `session` group (`session stop`, `session clear`).
 - Do not run checkout unless the user explicitly authorizes placing a real Coles order. Checkout places a real, potentially chargeable order.
-- After a successful checkout, retrieve the resulting order with `coles orders list --status current --json`.
 - The session/profile name defaults to `$COLES_CLI_SESSION` or `default`. Override per command with `--session <name>` or `--name <name>`.
-
-## Checking Current Browser State
-
-These read-only commands are safe to run anytime to observe the current browser/session state. No need to consult `--help` first.
-
-| Goal | Command |
-|---|---|
-| Am I logged in? What account? | `coles auth status --json` |
-| What is in the trolley/cart right now? | `coles cart list --json` (alias: `shoppingcart list`) |
-| What are my current in-progress orders? | `coles orders list --status current --json` |
-| Capture the current page to a file | `coles screenshot` (writes `screenshot.png`; override with `--output PATH`) |
-
-`coles auth status` reports login state without opening a login flow. All four commands accept global `--session` / `--name` and `--json` flags. If `auth status` returns `login_required`, or any verb returns `interactive_authentication_required` with a `next_command`, sign in before doing anything else.
 
 ## Help Index
 
-For every task that is not a read-only state check above, find the matching category below and run the listed `--help` command(s) to learn exact flags before executing.
+For every task, find the matching category below and run the listed `--help` command(s) to learn exact flags before executing.
 
 ### Orientation
 
@@ -67,7 +51,7 @@ For every task that is not a read-only state check above, find the matching cate
 | Log in or verify/ensure the Coles session | `coles login --help` |
 | Auth command group overview | `coles auth --help` |
 | Open Coles and wait while the user logs in manually | `coles auth interactive --help` |
-| Read-only check | `coles auth status --json` |
+| Read-only login-state check | `coles auth status --help` |
 
 ### Product Discovery & Adding To The Trolley
 
@@ -87,7 +71,7 @@ For every task that is not a read-only state check above, find the matching cate
 | Remove a trolley item by list index | `coles cart remove --help` |
 | Set a trolley item's final quantity by index | `coles cart set-quantity --help` |
 | Complete checkout and place the order, authorized only | `coles cart checkout --help` |
-| Read-only cart check | `coles cart list --json` |
+| List trolley/cart contents | `coles cart list --help` |
 
 ### Orders: Listing And Line Items
 
@@ -96,29 +80,12 @@ For every task that is not a read-only state check above, find the matching cate
 | Orders command group overview | `coles orders --help` |
 | List current or past orders | `coles orders list --help` |
 | Show visible line items of a specific order id | `coles orders items --help` |
-| Read-only current orders check | `coles orders list --status current --json` |
 
 ### Diagnostics
 
 | When | Run |
 |---|---|
 | Save a screenshot of the current page | `coles screenshot --help` |
-| Read-only capture | `coles screenshot` |
-
-## Common Arguments
-
-All leaf commands accept these global flags:
-
-- `--session <name>` / `--name <name>`: session/profile name, default `$COLES_CLI_SESSION` or `default`.
-- `--json`: emit the full JSON payload instead of the short human-readable summary.
-- `-h` / `--help`: show help.
-
-## Workflow Patterns
-
-- First-time sign-in: `auth status` -> if not logged in -> `login --interactive --wait --timeout 300` -> complete login in the Camoufox window -> re-run `auth status`.
-- Standard shopping flow: `products search` -> `products add` -> `cart list` -> optionally `cart set-quantity` / `cart remove` -> `cart checkout` only if authorized -> `orders list --status current`.
-- Free resources without losing login: `coles session stop`.
-- Reset everything: `coles session clear`.
 
 ## Safety
 

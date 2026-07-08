@@ -26,21 +26,6 @@ Do not skip this skill just because the user did not mention `geminiwebapp-cli`.
 - A per-session background Camoufox worker is reused across commands. The first command starts it and it exits when idle. Run `session stop` to close it without losing login.
 - `.env` in the cwd is auto-loaded; existing env vars take precedence.
 
-## Check Current Browser State
-
-These are the only commands documented inline because they are needed to assess state before acting. All accept `--session` and emit `--json`.
-
-| Goal | Command |
-|---|---|
-| Am I logged in? | `geminiwebapp-cli auth status --json` |
-| What chats are in the sidebar? | `geminiwebapp-cli chats list --json` |
-| What does the page look like now? | `geminiwebapp-cli screenshot --output shot.png --json` |
-| What messages are in a chat? | `geminiwebapp-cli chats read <chat> --json` |
-| What type/status is a chat, auto-detecting Deep Research? | `geminiwebapp-cli chats status <chat> --json` |
-| What is a Deep Research chat's status? | `geminiwebapp-cli chats research <chat> --json` |
-
-If `auth status` or any command returns `error.type: interactive_authentication_required`, follow the returned `next_command` value and complete manual login in the opened browser. Do not ask for or print credentials.
-
 ## Functional Help Index
 
 For every action below, run the listed `<command> --help` to get current flags, choices, and defaults before composing the command. This skill intentionally does not duplicate flag lists. Fetch help on demand per task.
@@ -58,8 +43,9 @@ For every action below, run the listed `<command> --help` to get current flags, 
 
 | When | Run |
 |---|---|
-| Log in or verify current session; supports `--interactive`, `--wait`, `--timeout` | `geminiwebapp-cli login --help` |
-| Open Gemini for manual login; supports `--wait`, `--timeout` | `geminiwebapp-cli auth interactive --help` |
+| Log in or verify the current session | `geminiwebapp-cli login --help` |
+| Open Gemini for manual login | `geminiwebapp-cli auth interactive --help` |
+| Read-only login-state check | `geminiwebapp-cli auth status --help` |
 
 ### Session Lifecycle
 
@@ -72,7 +58,7 @@ For every action below, run the listed `<command> --help` to get current flags, 
 
 | When | Run |
 |---|---|
-| Start a new chat and send a prompt, including files/tools/model/aspect ratio/dry run/wait/timeout | `geminiwebapp-cli chats new --help` |
+| Start a new chat and send a prompt | `geminiwebapp-cli chats new --help` |
 | Send a follow-up to an existing chat | `geminiwebapp-cli chats send --help` |
 | Alias of `chats send` | `geminiwebapp-cli chats continue --help` |
 
@@ -89,16 +75,16 @@ For every action below, run the listed `<command> --help` to get current flags, 
 | When | Run |
 |---|---|
 | List sidebar chats | `geminiwebapp-cli chats list --help` |
-| List visible `+` menu options for `--tool` / `--plus-option` | `geminiwebapp-cli chats tools --help` |
+| List visible `+` menu tool options | `geminiwebapp-cli chats tools --help` |
 
-## Agent Workflow Tips
+### Reading Chats & Diagnostics
 
-- Deep Research completion: `chats new --tool deep-research` returns `next_command`, `wait_command`, `status_command`, and `recommended_poll_seconds`. Prefer `wait_command`; one blocking call returns the completed report and sources.
-- Report text is in `research.report.text`. `research.text` is only a short status summary.
-- Media generation failure is not a transport error. The command returns `ok: true` even when Gemini visibly fails. Check `response.done`; when false, inspect `response.error.type` and `response.error.message`.
-- Video/music needs longer timeouts. Use `--timeout 900` or higher for create-video / create-music workflows.
-- Music downloads intentionally select Gemini's `Audio only` option from the `Download track` submenu.
-- `--dry-run` exercises the full browser flow and stops before submitting. Use it for smoke tests without consuming generation quota.
+| When | Run |
+|---|---|
+| Read the messages in a chat | `geminiwebapp-cli chats read --help` |
+| Show a chat's type/status, auto-detecting Deep Research | `geminiwebapp-cli chats status --help` |
+| Show a Deep Research chat's status | `geminiwebapp-cli chats research --help` |
+| Save a screenshot of the current page | `geminiwebapp-cli screenshot --help` |
 
 ## Deep Research
 

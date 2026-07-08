@@ -41,6 +41,7 @@ services:
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
       XERO_USER: ${XERO_USER:-}
       SECRET_XERO_PASSWORD: ${SECRET_XERO_PASSWORD:-}
+      FACEBOOK_CLI_MESSENGER_PIN: ${FACEBOOK_CLI_MESSENGER_PIN:-}
     volumes:
       - ./workspaces:/workspaces
       - ./data:/data

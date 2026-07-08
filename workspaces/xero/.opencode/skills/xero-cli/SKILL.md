@@ -1,44 +1,50 @@
 ---
 name: xero-cli
-description: Use Xero through `xero-cli` whenever the user asks to manage Xero expenses, mileage claims, receipts, Payroll timesheets, pay periods, or to inspect the current Xero page through a real browser session.
-license: MIT
-compatibility: opencode
-metadata:
-  command: xero-cli
+description: Operate and validate the xero-cli for browser-driven Xero workflows across expenses, mileage, timesheets, sales, purchases, payroll, auth, and live page debugging. Use when an agent needs to run any xero-cli command or discover the current command surface through --help while the CLI is still evolving.
 ---
 
-## Use This Skill For
+# xero-cli
 
-Use this skill for Xero tasks, including listing and creating expenses and mileage claims, editing expense details, opening and inspecting Payroll timesheets, listing valid pay periods, viewing/editing/approving/reverting/deleting timesheets, checking authentication state, taking screenshots, and debugging the visible Xero page.
+Use this skill when working with the `xero-cli` CLI. The CLI is installed system-wide and under active development, so do not rely on hardcoded command examples beyond help discovery. Always inspect the relevant `--help` output before choosing flags for an operation.
 
-Do not skip this skill just because the user did not mention `xero-cli`. If the task explicitly asks for Xero expenses, receipts, mileage, timesheets, pay periods, or the Xero page, use this skill.
+## Project Context
 
-## Core Rule
+- CLI entry point: `xero-cli` (installed system-wide)
+- Browser automation: Camoufox with Playwright sync API
+- Persistent profile: `~/.xero-user-cli/profiles/<session>`
+- Background browser worker: UNIX socket worker
+- Environment config: `.env` resolved independent of the launch directory.
+  Priority: `XERO_USER_CLI_ENV_FILE` (explicit path) → nearest `.env` walking up
+  from the current working directory → `~/.xero-user-cli/.env`.
+- Required environment variables (`XERO_USER`, `SECRET_XERO_PASSWORD`) are loaded
+  from those `.env` locations. Empty/whitespace env vars are treated as unset so
+  injected placeholders can be filled from `.env`; real non-empty env vars win.
 
-Keep this skill minimal. Do not rely on memorized command examples beyond auth/session basics. Before running any task-specific Xero command, inspect the CLI's current help so the agent uses the installed CLI contract:
+## Operating Principles
+
+- Prefer JSON output for agent workflows when the command supports it.
+- Keep create/edit workflows non-destructive unless the user explicitly asks to submit/save/approve.
+- Do not use submit/save/approve flags unless the user explicitly requested a real submission.
+- Do not clear the browser profile unless the user explicitly asks, because it can remove trusted-device/session state.
+- Stopping the worker (`xero-cli session stop`) is safe when needed to reload code; it does not delete the profile and is different from clearing the session.
+- If source code changes are made while a worker is running, stop the worker so the next CLI invocation reloads the updated code.
+- Do not clear the session as a first response to auth issues; preserving trusted-device state is valuable.
+- Never print secrets, passwords, MFA codes, or `.env` contents.
+- Run the relevant `--help` command before using a command area, because flags may change while this CLI is being developed.
+
+## Help Discovery Map
+
+Run these help commands to learn the current supported syntax for each functional area. The CLI is under active development, so always inspect the relevant `--help` output before choosing flags.
+
+### Top-Level Capability Discovery
 
 ```bash
 xero-cli --help
-xero-cli <command> --help
-xero-cli <command> <subcommand> --help
 ```
 
-Prefer `--json` whenever available for structured output. Redirect stdout yourself if the user asks for a file.
+Use this first when unsure what command groups exist. Current groups: `session`, `login`, `screenshot`, `auth`, `expenses`, `timesheets`, `sales`, `purchases`, `payroll`, `accounting`, `debug`.
 
-`xero-cli` drives Xero through a persistent Camoufox browser profile with a background worker per session. Pick a session/profile with `--session <name>` (alias `--name`).
-
-## Help Entry Points
-
-Use these installed help entry points to discover current syntax on demand. The list mirrors the installed CLI surface (top-level verbs plus every grouped subcommand). Run the narrowest relevant `--help` before execution.
-
-Top-level verbs:
-
-```bash
-xero-cli login --help
-xero-cli screenshot --help
-```
-
-`session` group (local browser session state):
+### Session Management
 
 ```bash
 xero-cli session --help
@@ -46,25 +52,40 @@ xero-cli session clear --help
 xero-cli session stop --help
 ```
 
-`auth` group (authentication state and MFA):
+`clear` deletes the local browser profile for a session; `stop` stops the background browser worker without deleting the profile.
+
+### Authentication And MFA
 
 ```bash
+xero-cli login --help
 xero-cli auth --help
 xero-cli auth status --help
 xero-cli auth mfa --help
 ```
 
-`expenses` group (expense and mileage claims):
+### Screenshots
+
+```bash
+xero-cli screenshot --help
+```
+
+### Expenses And Mileage
 
 ```bash
 xero-cli expenses --help
 xero-cli expenses list --help
 xero-cli expenses create --help
-xero-cli expenses mileage --help
+xero-cli expenses view-detail --help
 xero-cli expenses edit-detail --help
+xero-cli expenses delete-detail --help
+xero-cli expenses mileage --help
+xero-cli expenses mileage create --help
+xero-cli expenses mileage view-detail --help
+xero-cli expenses mileage edit-detail --help
+xero-cli expenses mileage delete-detail --help
 ```
 
-`timesheets` group (Xero Payroll timesheets):
+### Timesheets
 
 ```bash
 xero-cli timesheets --help
@@ -79,88 +100,149 @@ xero-cli timesheets approve --help
 xero-cli timesheets delete --help
 ```
 
-`debug` group (visible page inspection without printing secrets):
+### Sales
+
+```bash
+xero-cli sales --help
+xero-cli sales invoices --help
+xero-cli sales invoices open --help
+xero-cli sales invoices list --help
+xero-cli sales invoices create --help
+xero-cli sales payment-links --help
+xero-cli sales payment-links open --help
+xero-cli sales payment-links list --help
+xero-cli sales payment-services --help
+xero-cli sales payment-services open --help
+xero-cli sales payment-services list --help
+xero-cli sales quotes --help
+xero-cli sales quotes open --help
+xero-cli sales quotes list --help
+xero-cli sales products --help
+xero-cli sales products open --help
+xero-cli sales products list --help
+xero-cli sales customers --help
+xero-cli sales customers open --help
+xero-cli sales customers list --help
+```
+
+### Purchases
+
+```bash
+xero-cli purchases --help
+xero-cli purchases bills --help
+xero-cli purchases bills open --help
+xero-cli purchases bills list --help
+xero-cli purchases payments --help
+xero-cli purchases payments open --help
+xero-cli purchases payments list --help
+xero-cli purchases purchase-orders --help
+xero-cli purchases purchase-orders open --help
+xero-cli purchases purchase-orders list --help
+xero-cli purchases suppliers --help
+xero-cli purchases suppliers open --help
+xero-cli purchases suppliers list --help
+```
+
+### Payroll
+
+```bash
+xero-cli payroll --help
+xero-cli payroll employees --help
+xero-cli payroll employees open --help
+xero-cli payroll employees list --help
+xero-cli payroll leave --help
+xero-cli payroll leave open --help
+xero-cli payroll leave list --help
+```
+
+### Accounting
+
+```bash
+xero-cli accounting --help
+xero-cli accounting accounts --help
+xero-cli accounting accounts list --help
+```
+
+### Live Page Debugging
 
 ```bash
 xero-cli debug --help
 xero-cli debug page --help
 ```
 
-For any new or renamed subcommand not listed above, run `xero-cli <group> --help` first and use the installed CLI as the source of truth.
+The debug output is intended to expose visible page structure such as headings, buttons, labels, inputs, links, and body text. Do not add logging that exposes credentials, MFA codes, or other secrets.
 
-## Sign-In
+## Authentication Command Reference
 
-Before listing expenses, editing expense details, opening timesheets, or any write action, verify authentication:
+These are the validated stable auth flows. For evolving flags, still cross-check the relevant `--help` output above.
+
+### Login (non-interactive primary flow)
+
+```bash
+xero-cli login --json
+```
+
+Expected behavior:
+
+- Opens the neutral Xero homepage URL for the configured organisation
+  (`$XERO_APP_BASE_URL/homepage`, defaulting to `https://go.xero.com/app/!M0777/homepage`)
+- Fills username from `XERO_USER`
+- Fills password from `SECRET_XERO_PASSWORD`
+- Detects whether the user is authenticated
+- Detects MFA and returns a structured `mfa_required` response
+- Keeps the browser open in the background worker if MFA is required
+
+### MFA continuation
+
+```bash
+xero-cli auth mfa CODE [--no-trust-device] [--timeout SECONDS] --json
+```
+
+Expected behavior:
+
+- Reuses the existing worker browser session
+- Inserts the MFA code into the current MFA page
+- Selects the trust/remember device option if Xero offers it (unless `--no-trust-device`)
+- Waits up to `--timeout` seconds (default 120) for Xero to finish
+- Continues to the neutral homepage
+- Returns authenticated JSON when successful
+
+### Status inspection (read-only)
 
 ```bash
 xero-cli auth status --json
 ```
 
-If the session is not authenticated, start interactive login and wait for the user to complete it in the Camoufox window, including any MFA and the "Trust this device" step. Do not ask for or print credentials.
+### Manual fallback
 
 ```bash
 xero-cli login --interactive --manual-timeout 300
 ```
 
-After login, run `xero-cli auth status --json` again. Proceed only when authentication is confirmed.
+Use only when the automated flow cannot handle a new Xero authentication/checkpoint variant.
 
-If Xero presents an MFA prompt during login and the user supplies a code, submit it with:
+### Authentication success criteria
 
-```bash
-xero-cli auth mfa <code>
-```
-
-By default this selects "Trust/Remember this device" if Xero offers it; pass `--no-trust-device` to skip that.
-
-If the browser worker needs to be closed without deleting login state, stop the session:
+Before feature work, verify:
 
 ```bash
-xero-cli session stop
+xero-cli session clear
+xero-cli login --json
 ```
 
-Use `xero-cli session clear` only when the saved profile and login state should be deleted.
+If MFA is required:
 
-## Basic Operation Pattern
+```bash
+xero-cli auth mfa CODE --json
+```
 
-For each user request:
+Expected successful response:
 
-1. Confirm authentication with `xero-cli auth status --json`.
-2. Run `xero-cli --help` if you do not know the current command group.
-3. Run the narrowest relevant `--help`, such as `xero-cli expenses --help`, `xero-cli timesheets --help`, or a deeper subcommand help.
-4. Execute the command using the flags shown by the current help output.
-5. Use `--json` when available and summarize results for the user.
-
-## Common Task Shapes
-
-- List recent expenses or timesheets: `xero-cli expenses list --json` / `xero-cli timesheets list --json` (both accept `--limit`).
-- Look up valid pay periods before creating a timesheet: `xero-cli timesheets periods --employee "<name>" --json` (`--employee` is required).
-- Find a specific timesheet to view/edit/approve/revert/delete: use `--employee`, `--period`, and `--status` filters on `timesheets view/edit/revert-to-draft/approve/delete`.
-- Open and fill an expense without submitting: `xero-cli expenses create ...` without `--submit`.
-- Open and fill a timesheet without saving: `xero-cli timesheets create ...` without `--save`, or `timesheets edit ...` without `--save`.
-- Inspect the current Xero page when a result is unclear: `xero-cli debug page --json` (optionally with `--url`, `--click-button`, `--limit`).
-- Capture a still image: `xero-cli screenshot --output <path>`.
-
-## Safety
-
-Use the authenticated browser session already owned by the user. Do not ask for passwords, tokens, cookies, MFA codes, or other credentials.
-
-Prefer read-only commands (`list`, `view`, `periods`, `auth status`) unless the user explicitly asks for a write action.
-
-These actions change Xero state and must only run when the user's instruction is explicit and unambiguous:
-
-- Submitting an expense or mileage claim for approval: the `--submit` flag on `expenses create` / `expenses mileage`. Without `--submit`, the form is only opened and filled.
-- Approving a timesheet: `xero-cli timesheets approve --confirm`.
-- Reverting a timesheet to draft: `xero-cli timesheets revert-to-draft --confirm`.
-- Deleting a timesheet: `xero-cli timesheets delete --confirm`.
-
-Without `--confirm`, the matching timesheet is identified and reported but not changed. Restate the exact action and target before running any of these with `--confirm`.
-
-After a write action, retrieve the resulting state with a read command (for example `xero-cli expenses list --json` or `xero-cli timesheets list --json`) and report it.
-
-## Filesystem Boundaries
-
-Use the installed CLI help and this skill file as the contract. Do not inspect package source, site source code, `.env` files, browser profiles, or other files outside this workspace. If behavior is unclear, run the relevant `xero-cli --help` command and report the missing operation.
-
-## File Outputs
-
-If the user asks for files for another agent, write final files to the requested output directory. Do not only paste file contents into chat when a downstream agent needs a file artifact.
+```json
+{
+  "ok": true,
+  "authenticated": true,
+  "url": "https://go.xero.com/app/!yj48m/homepage",
+  "state": "logged_in"
+}
+```

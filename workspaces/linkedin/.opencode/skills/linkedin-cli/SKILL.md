@@ -26,22 +26,18 @@ Do not skip this skill just because the user did not mention `linkedin-cli`. If 
 - stdout carries only the result; logs and `error: ...` lines are on stderr. Stable error types include `checkpoint_challenge`, `authentication`, `profile_inaccessible`, `skip_profile`, and `connection_limit`.
 - Thread IDs, activity IDs, job IDs, comment IDs, and notification indexes returned by one command are the handles you pass into the next. There is no implicit session state between commands.
 
-## Checking Current Browser State
-
-Run these at the start of a task to confirm the session is alive and authenticated before doing anything else.
-
-| Goal | Command |
-|---|---|
-| Confirm who the session is logged in as | `linkedin-cli whoami --json` |
-| Login or clear a checkpoint if the session is not authenticated | `linkedin-cli login --json` |
-| Launch and bind a persistent browser for legacy/debug workflows | `linkedin-cli session open --help` |
-| Stop the worker or legacy launcher | `linkedin-cli session close --json` |
-
-If `whoami` succeeds, the session is healthy. If it fails with `authentication` or `checkpoint_challenge`, run `linkedin-cli login --json` before retrying. Do not ask for or print credentials.
-
 ## Functional Command Map
 
 Every verb supports `<verb> --help` for exact arguments, choices, and result shape. Do not guess arguments. When a task matches a category below, run the listed `--help` command first, then run the verb with `--json`.
+
+### Authentication & Session
+
+| Intent | Verb | Mode |
+|---|---|---|
+| Confirm who the session is logged in as | `linkedin-cli whoami --help` | read |
+| Login or clear a checkpoint | `linkedin-cli login --help` | write |
+| Launch and bind a persistent browser for legacy/debug workflows | `linkedin-cli session open --help` | read |
+| Stop the worker or legacy launcher | `linkedin-cli session close --help` | read |
 
 ### People: Discover, Inspect, Reach Out
 
@@ -55,7 +51,7 @@ Every verb supports `<verb> --help` for exact arguments, choices, and result sha
 | List recent personal messaging conversations | `linkedin-cli inbox --help` | read |
 | Read the message thread with a member or by inbox thread id | `linkedin-cli thread --help` | read |
 
-Typical loop: `search` -> `profile` / `status` -> `message` / `thread`, or `inbox` -> `thread --thread-id <id>`.
+Typical loop: `search` -> `profile` / `status` -> `message` / `thread`, or `inbox` -> `thread`.
 
 ### Jobs: Search, Track, Apply
 

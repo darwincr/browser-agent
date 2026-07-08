@@ -371,8 +371,14 @@ completed manually in the opened browser and reused from the saved profile. Its
 profile is stored under the container user's home directory, which is persisted by
 the `opencode-home` volume.
 
-`facebook-cli` currently exists as a private GitHub repository but has no default
-branch, so the build skips it until the repo contains installable code.
+`facebook-cli` uses a persistent Playwright Chromium profile with a background
+worker per session. Login is completed manually in the opened browser and reused
+from the saved profile. Its profile is stored under the container user's home
+directory, which is persisted by the `opencode-home` volume.
+
+Set `FACEBOOK_CLI_MESSENGER_PIN` in `.env` when the Facebook Messenger session
+requires PIN unlock. `docker-compose.yml` passes it through to the container for
+`facebook-cli`.
 
 `browser-harness` uses a generic persistent Chromium profile at
 `~/.browser-harness/profiles/default`. The container starts this browser

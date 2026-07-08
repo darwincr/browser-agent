@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-work_dir="$(pwd)"
-pid_file="${SCREEN_RECORDING_PID_FILE:-${work_dir}/screen-recording.pid}"
+if [ $# -lt 1 ]; then
+  cat >&2 <<'EOF'
+Error: an output folder is required.
+
+Usage: stop-recording <output-folder>
+
+Pass the same folder that was given to start-recording — the PID file lives
+there. When handling an A2A task, this is the task outputs directory from the
+"A2A file handling context" of the request
+(e.g. /workspaces/a2a-tasks/<task-id>/outputs).
+EOF
+  exit 1
+fi
+
+output_dir="$1"
+pid_file="${output_dir}/screen-recording.pid"
 
 if [ ! -f "$pid_file" ]; then
   printf 'No active screen recording found.\n' >&2

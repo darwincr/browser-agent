@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-work_dir="$(pwd)"
-output_dir="${SCREENSHOT_OUTPUT_DIR:-${work_dir}}"
+if [ $# -lt 1 ]; then
+  cat >&2 <<'EOF'
+Error: an output folder is required.
+
+Usage: take-screenshot <output-folder>
+
+The screenshot PNG will be written inside <output-folder>.
+When handling an A2A task, pass the task outputs directory from the
+"A2A file handling context" of the request
+(e.g. /workspaces/a2a-tasks/<task-id>/outputs). Files written there are
+returned to the caller as A2A artifacts.
+EOF
+  exit 1
+fi
+
+output_dir="$1"
 display="${DISPLAY:-:1}"
 geometry="${VNC_GEOMETRY:-1920x1080}"
 
@@ -14,10 +28,7 @@ esac
 mkdir -p "$output_dir"
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
-output_file="${1:-${output_dir}/screenshot-${timestamp}.png}"
-output_parent="$(dirname "$output_file")"
-
-mkdir -p "$output_parent"
+output_file="${output_dir}/screenshot-${timestamp}.png"
 
 ffmpeg \
   -y \

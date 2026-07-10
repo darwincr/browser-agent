@@ -188,7 +188,6 @@ def add_download_parser(
 
 
 def add_message_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("message", nargs="?", default="Explain what this repository does.")
     parser.add_argument("--context-id", help="Optional A2A contextId for conversation continuity")
     parser.add_argument("--session-id", help="Optional metadata.shared.session.id")
     parser.add_argument("--model-provider", help="Optional metadata.shared.model.providerID")
@@ -205,8 +204,12 @@ def submit(args: argparse.Namespace, env: dict[str, str]) -> int:
     if directory_error is not None:
         print_json(directory_error)
         return 1
+    message_text, message_error = read_submit_message_from_stdin()
+    if message_error is not None:
+        print_json(message_error)
+        return 1
     token = require_token(args, env)
-    payload = build_submit_payload(args)
+    payload = build_submit_payload(args, message_text)
     response = post_json(
         f"{base_url(args, env)}/v1/message:send",
         token,
@@ -393,11 +396,23 @@ def ensure_directory(args: argparse.Namespace) -> dict[str, Any] | None:
     return None
 
 
-def build_submit_payload(args: argparse.Namespace) -> dict[str, Any]:
+def read_submit_message_from_stdin() -> tuple[str, dict[str, Any] | None]:
+    if sys.stdin.isatty():
+        return "", {
+            "ok": False,
+            "error": "Submit requires the task message on stdin. Use: browser-agent-cli submit --directory facebook < /tmp/task.txt",
+        }
+    message = sys.stdin.read()
+    if not message.strip():
+        return "", {"ok": False, "error": "Submit requires a non-empty task message on stdin."}
+    return message, None
+
+
+def build_submit_payload(args: argparse.Namespace, message_text: str) -> dict[str, Any]:
     message: dict[str, Any] = {
         "messageId": f"msg-{int(time.time() * 1000)}",
         "role": "ROLE_USER",
-        "parts": [{"text": args.message}],
+        "parts": [{"text": message_text}],
     }
     for file_path in args.file:
         message["parts"].append(file_part_from_path(Path(file_path)))

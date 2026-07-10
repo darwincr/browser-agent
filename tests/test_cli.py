@@ -49,7 +49,6 @@ def test_compact_task_marks_backend_timeout_as_recoverable() -> None:
 
 def test_build_submit_payload_includes_shared_metadata() -> None:
     args = argparse.Namespace(
-        message="hello",
         file=[],
         context_id="ctx-1",
         session_id="session-1",
@@ -58,13 +57,61 @@ def test_build_submit_payload_includes_shared_metadata() -> None:
         directory="coles",
     )
 
-    payload = cli.build_submit_payload(args)
+    payload = cli.build_submit_payload(args, "hello")
     message = payload["message"]
 
+    assert message["parts"] == [{"text": "hello"}]
     assert message["contextId"] == "ctx-1"
     assert message["metadata"]["shared"]["session"]["id"] == "session-1"
     assert message["metadata"]["shared"]["model"] == {"providerID": "provider-1", "modelID": "model-1"}
     assert message["metadata"]["opencode"]["directory"] == "coles"
+
+
+def test_read_submit_message_requires_stdin(monkeypatch) -> None:
+    class TtyStdin:
+        def isatty(self) -> bool:
+            return True
+
+    monkeypatch.setattr(sys, "stdin", TtyStdin())
+
+    message, error = cli.read_submit_message_from_stdin()
+
+    assert message == ""
+    assert error is not None
+    assert "stdin" in error["error"]
+
+
+def test_read_submit_message_rejects_empty_stdin(monkeypatch) -> None:
+    class EmptyStdin:
+        def isatty(self) -> bool:
+            return False
+
+        def read(self) -> str:
+            return "  \n"
+
+    monkeypatch.setattr(sys, "stdin", EmptyStdin())
+
+    message, error = cli.read_submit_message_from_stdin()
+
+    assert message == ""
+    assert error is not None
+    assert "non-empty" in error["error"]
+
+
+def test_read_submit_message_accepts_redirected_stdin(monkeypatch) -> None:
+    class RedirectedStdin:
+        def isatty(self) -> bool:
+            return False
+
+        def read(self) -> str:
+            return "hello > world\n"
+
+    monkeypatch.setattr(sys, "stdin", RedirectedStdin())
+
+    message, error = cli.read_submit_message_from_stdin()
+
+    assert message == "hello > world\n"
+    assert error is None
 
 
 def test_ensure_directory_requires_directory() -> None:

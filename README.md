@@ -171,12 +171,12 @@ Fetch the deployed Coolify agent card using `.env.coolify`:
 ```
 
 Submit a task to the Coolify deployment. Every `submit` must select a workspace with
-`--directory` (there is no default workspace). The command waits up to 110 seconds by
-default (under the common 120s shell-tool timeout) and returns compact JSON for agent
-consumption:
+`--directory` (there is no default workspace), and the task message must be provided
+on stdin. The command waits up to 110 seconds by default (under the common 120s
+shell-tool timeout) and returns compact JSON for agent consumption:
 
 ```bash
-./browser-agent-cli --env-file .env.coolify submit --directory browser-harness "Say hello and describe your current browser-agent workspace."
+./browser-agent-cli --env-file .env.coolify submit --directory browser-harness < /tmp/task.txt
 ```
 
 If the task is still running, use the returned `taskId` as input to `wait`:
@@ -202,14 +202,14 @@ Useful options:
 
 - `--url https://browser-agent.example.com`
 - `--token your-token`
-- `submit --wait-seconds 300 "Wait up to 5 minutes."`
-- `submit --no-wait "Return taskId immediately."`
-- `submit --context-id test-conversation-1 "Continue our conversation."`
-- `submit --session-id existing-opencode-session-id "Use this OpenCode session."`
-- `submit --model-provider provider-id --model model-id "Use this model."`
+- `submit --wait-seconds 300 < /tmp/task.txt`
+- `submit --no-wait < /tmp/task.txt`
+- `submit --context-id test-conversation-1 < /tmp/task.txt`
+- `submit --session-id existing-opencode-session-id < /tmp/task.txt`
+- `submit --model-provider provider-id --model model-id < /tmp/task.txt`
 - `models --provider provider-id`
-- `submit --directory coles "Work in the coles workspace."` (required for submit)
-- `submit --file ./path/to/input.pdf "Summarize this file."`
+- `submit --directory coles < /tmp/task.txt` (required for submit)
+- `submit --file ./path/to/input.pdf < /tmp/task.txt`
 - `download task-id-from-submit --output-dir ./artifacts`
 - `download http://localhost:18000/artifacts/msg-123/outputs/screenshot.png --output-dir ./artifacts`
 - `wait --poll-timeout 600 task-id-from-submit`
@@ -223,13 +223,13 @@ are useful as future inputs, such as `taskId`, `contextId`, `state`, `terminal`,
 Run the script (reads `.env` for `A2A_PUBLIC_URL` and the bearer token):
 
 ```bash
-./browser-agent-cli submit --directory browser-harness "Explain what this repository does."
+./browser-agent-cli submit --directory browser-harness < /tmp/task.txt
 ```
 
 If you change the Compose bearer token, pass it explicitly:
 
 ```bash
-./browser-agent-cli submit --directory browser-harness --token your-token "What can you do?"
+./browser-agent-cli submit --directory browser-harness --token your-token < /tmp/task.txt
 ```
 
 Useful options:
@@ -256,7 +256,7 @@ The `/workspaces/a2a-tasks` staging root sits outside the per-workspace director
 Attach a local file with the test client:
 
 ```bash
-./browser-agent-cli submit --directory browser-harness --file ./source.pdf "Summarize this file and write summary.md for the next agent."
+./browser-agent-cli submit --directory browser-harness --file ./source.pdf < /tmp/task.txt
 ```
 
 The client sends the file as an inline A2A `raw` part:

@@ -30,7 +30,7 @@ Available subcommands:
 
 - `card`: fetch compact A2A agent card details
 - `models`: list provider/model IDs configured on the A2A server
-- `submit`: submit a message/task and wait up to 110 seconds by default (under the common 120s shell-tool timeout)
+- `submit`: submit a message/task from stdin and wait up to 110 seconds by default (under the common 120s shell-tool timeout)
 - `status`: fetch current state for a task ID
 - `wait`: poll a task ID until completion, failure, cancellation, rejection, or timeout
 - `download`: download artifact files from a task ID, artifact URL, or `/artifacts/...` path using the same `.env` / auth settings
@@ -62,7 +62,7 @@ Because the task exists from that point on, a second `submit` starts a **second*
 
 ## Usage
 
-Every `submit` must target the Gemini workspace with `--directory gemini`. The service has no default workspace and rejects a submit without a directory.
+Every `submit` must target the Gemini workspace with `--directory gemini`. The task message must come from stdin, typically with `< /tmp/task.txt`; inline message arguments are not supported. The service has no default workspace and rejects a submit without a directory.
 
 Check the agent card:
 
@@ -79,13 +79,13 @@ Check the production Coolify agent card only when explicitly needed:
 Submit a deep research task:
 
 ```bash
-./browser-agent-cli submit --directory gemini "Use the pre-authenticated Gemini web app for deep research on the current state of residential battery prices in Australia. Return sources and a concise synthesis."
+./browser-agent-cli submit --directory gemini < /tmp/task.txt
 ```
 
 Submit a long task and poll it:
 
 ```bash
-./browser-agent-cli submit --directory gemini --no-wait "Use Gemini deep research to compare the top CRM platforms for a small MSP."
+./browser-agent-cli submit --directory gemini --no-wait < /tmp/task.txt
 ./browser-agent-cli wait TASK_ID
 ```
 
@@ -94,7 +94,7 @@ If submit used `--env-file .env.coolify`, wait/status calls must use the same en
 Attach a file:
 
 ```bash
-./browser-agent-cli submit --directory gemini --file ./brief.pdf "Use this brief as context for Gemini deep research and return a report."
+./browser-agent-cli submit --directory gemini --file ./brief.pdf < /tmp/task.txt
 ```
 
 Download returned artifacts without using `curl`:

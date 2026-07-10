@@ -1,4 +1,4 @@
----
+-
 name: screen-recording
 description: Use `take-screenshot`, `start-recording`, and `stop-recording` to capture the browser or XFCE desktop when the user asks to inspect, record, observe, review, debug, or preserve what the browser is doing visually.
 license: MIT

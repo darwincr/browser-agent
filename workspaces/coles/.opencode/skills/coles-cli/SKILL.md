@@ -13,7 +13,7 @@ This skill guides an agent in operating the `coles` / `coles-cli` command. The C
 
 ## Use This Skill For
 
-Use this skill for Coles shopping tasks, including searching products, adding products to the trolley, inspecting the trolley/cart, changing trolley item quantities, removing trolley items, listing current or past orders, inspecting order items, capturing Coles screenshots, and placing orders.
+Use this skill for Coles shopping tasks, including searching products, adding products to the trolley, inspecting the trolley/cart, changing trolley item quantities, removing trolley items, listing current or past orders, inspecting order items, capturing Coles screenshots, placing orders, and inspecting the visible page controls/attributes for selector troubleshooting via `debug page`.
 
 Do not skip this skill just because the user did not mention `coles`. If the task explicitly asks for Coles products, orders, trolley, or checkout, use this skill.
 
@@ -86,6 +86,7 @@ For every task, find the matching category below and run the listed `--help` com
 | When | Run |
 |---|---|
 | Save a screenshot of the current page | `coles screenshot --help` |
+| Inspect visible page controls and attributes (selector troubleshooting) | `coles debug page --help` |
 
 ## Safety
 

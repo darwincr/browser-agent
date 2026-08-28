@@ -317,6 +317,20 @@ OpenCode provider credentials belong to the OpenCode runtime, not `opencode-a2a`
 
 You can configure them inside the desktop session or by injecting provider-specific environment variables into `docker-compose.yml`. Persisted OpenCode state is stored in the `opencode-home` volume.
 
+### LiteLLM dynamic model discovery
+
+The in-container runtime loads the [opencode-litellm](https://github.com/darwincr/opencode-litellm) plugin (a local fork of `yuseferi/opencode-litellm`, vendored in `docker/opencode-litellm/` and mounted read-only at `~/.config/opencode/opencode-litellm`). The shim in `docker/opencode-plugins/` is auto-loaded from `~/.config/opencode/plugins/`, so the plugin needs no `"plugin"` array entry.
+
+Providers in `docker/opencode.json` opt in with `"litellm": true` and discover their models from `https://litellm.dranzone.net` at startup (`dr-anthropic`, `dr-google`, `dr-openai`). Options mirror the workstation setup:
+
+- `modelFilter` / `excludeModels` — glob include/deny lists applied to **discovered** models only
+- `modelDefaults` — gap-filling defaults (limits, cost, variants) for matching model ids
+- `litellmMcp` / `litellmMcpEnabled` — opt-in MCP-server discovery from the same proxy (currently off)
+
+Models curated directly under `provider.dr-openai.models` are never overwritten by discovery — the workspace agents keep pinning those ids. If discovery fails (proxy unreachable, bad `LITELLM_API_KEY`), OpenCode still starts with the curated models and the plugin logs a warning to `/tmp/opencode.log`.
+
+The fork has no runtime npm dependencies (type-only imports), so the vendored source runs without `node_modules`. To update it, re-vendor from `~/.config/opencode/opencode-litellm` on the workstation (copy `src/`, `package.json`, `LICENSE`, `README.md`, `tsconfig.json`).
+
 ## Adding More Software
 
 Add Debian packages to this block in `Dockerfile`:

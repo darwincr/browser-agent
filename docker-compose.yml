@@ -47,6 +47,10 @@ services:
       - ./data:/data
       - opencode-home:/home/opencode
       - ./docker/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      # opencode-litellm plugin: auto-loaded shim + vendored fork source.
+      # OpenCode loads every file in ~/.config/opencode/plugins at startup.
+      - ./docker/opencode-plugins:/home/opencode/.config/opencode/plugins:ro
+      - ./docker/opencode-litellm:/home/opencode/.config/opencode/opencode-litellm:ro
 
 volumes:
   opencode-home:

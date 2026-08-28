@@ -21,12 +21,108 @@
     "reserved": 8192
   },
   "provider": {
+    "dr-anthropic": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "DR Anthropic",
+      "options": {
+        "apiKey": "{env:LITELLM_API_KEY}",
+        "baseURL": "https://litellm.dranzone.net/v1",
+        "litellm": true,
+        "modelFilter": [
+          "CLIProxyAnthropic/*"
+        ]
+      },
+      "models": {}
+    },
+    "dr-google": {
+      "npm": "@ai-sdk/google",
+      "name": "DR Google",
+      "options": {
+        "apiKey": "{env:LITELLM_API_KEY}",
+        "baseURL": "https://litellm.dranzone.net/v1beta/models",
+        "discoveryBaseURL": "https://litellm.dranzone.net",
+        "litellm": true,
+        "modelFilter": [
+          "CLIProxyGemini/*"
+        ]
+      },
+      "models": {}
+    },
     "dr-openai": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "DR LiteLLM",
       "options": {
-        "baseURL": "https://litellm.dranzone.net/",
         "apiKey": "{env:LITELLM_API_KEY}",
+        "baseURL": "https://litellm.dranzone.net/",
+        "litellm": true,
+        "litellmMcp": true,
+        "litellmMcpEnabled": false,
+        "litellmMcpPrefix": "",
+        "excludeMcpServers": [],
+        "modelDefaults": [
+          {
+            "match": [
+              "omlx/*"
+            ],
+            "exclude": [
+              "omlx/*ASR*",
+              "omlx/*TTS*",
+              "omlx/*Embedding*",
+              "omlx/whisper*",
+              "omlx/fish-audio*",
+              "omlx/MarkItDown"
+            ],
+            "model": {
+              "attachment": true,
+              "cost": {
+                "input": 0,
+                "output": 0
+              },
+              "limit": {
+                "context": 131072,
+                "output": 131072
+              },
+              "reasoning": true,
+              "tool_call": true,
+              "variants": {
+                "low": {
+                  "reasoningEffort": "low"
+                },
+                "medium": {
+                  "reasoningEffort": "medium"
+                },
+                "high": {
+                  "reasoningEffort": "high"
+                },
+                "max": {
+                  "reasoningEffort": "max"
+                },
+                "none": {
+                  "reasoningEffort": "none"
+                },
+                "xhigh": {
+                  "reasoningEffort": "xhigh"
+                }
+              }
+            }
+          }
+        ],
+        "modelFilter": [
+          "zai/*",
+          "omlx/*",
+          "azure/*",
+          "moonshot/*",
+          "minimax/*",
+          "ollama-cloud/*",
+          "cerebras/*",
+          "sambanova/*",
+          "ds4/*",
+          "xai/*",
+          "CLIProxy/gpt-*",
+          "siliconflow/zai-org/*",
+          "siliconflow/MiniMaxAI/*",
+          "gemini/gemini-3.1-flash-lite"
+        ],
         "setCacheKey": true
       },
       "models": {

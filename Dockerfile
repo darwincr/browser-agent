@@ -179,6 +179,14 @@ RUN chmod +x \
         /usr/local/bin/take-screenshot \
         /usr/local/bin/start-browser-harness-browser
 
+# Global OpenCode config, plugin shim, and vendored opencode-litellm source.
+# Baked into the image because Coolify rebuilds the image on every push but
+# never refreshes host-side bind-mount sources in its deployment directory.
+# The entrypoint syncs these into the persistent opencode-home volume on boot.
+COPY docker/opencode.json /opt/opencode-global/opencode.json
+COPY docker/opencode-plugins/ /opt/opencode-global/plugins/
+COPY docker/opencode-litellm/ /opt/opencode-global/opencode-litellm/
+
 COPY --chown=opencode:opencode workspaces/ /workspaces-seed/
 
 WORKDIR /workspaces

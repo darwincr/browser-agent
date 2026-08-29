@@ -42,7 +42,14 @@ The Compose file mounts:
 - `./workspaces` to `/workspaces` for the per-workspace project files
 - `./data` to `/data` for the SQLite A2A task store
 - `opencode-home` to `/home/opencode` for persisted OpenCode auth/config state
-- `./docker/opencode.json` (read-only) to the global OpenCode config
+
+The global OpenCode config (`docker/opencode.json`), the plugin shim
+(`docker/opencode-plugins/`), and the vendored `opencode-litellm` source
+(`docker/opencode-litellm/`) are baked into the image under
+`/opt/opencode-global/` and synced into the `opencode-home` volume by the
+entrypoint on every boot. They are deliberately **not** bind-mounted: Coolify
+rebuilds the image on every push but never refreshes host-side bind-mount
+sources in its deployment directory, so bind mounts would serve stale files.
 
 For Dockerfile-based deployments such as Coolify, the image also seeds `/workspaces`
 from the repository's `workspaces/` directory at build time. Set
@@ -319,7 +326,7 @@ You can configure them inside the desktop session or by injecting provider-speci
 
 ### LiteLLM dynamic model discovery
 
-The in-container runtime loads the [opencode-litellm](https://github.com/darwincr/opencode-litellm) plugin (a local fork of `yuseferi/opencode-litellm`, vendored in `docker/opencode-litellm/` and mounted read-only at `~/.config/opencode/opencode-litellm`). The shim in `docker/opencode-plugins/` is auto-loaded from `~/.config/opencode/plugins/`, so the plugin needs no `"plugin"` array entry.
+The in-container runtime loads the [opencode-litellm](https://github.com/darwincr/opencode-litellm) plugin (a local fork of `yuseferi/opencode-litellm`, vendored in `docker/opencode-litellm/`). The image bakes it under `/opt/opencode-global/` and the entrypoint syncs it to `~/.config/opencode/opencode-litellm` (plus the shim from `docker/opencode-plugins/` into `~/.config/opencode/plugins/`, which OpenCode auto-loads) on every boot. The plugin needs no `"plugin"` array entry.
 
 Providers in `docker/opencode.json` opt in with `"litellm": true` and discover their models from `https://litellm.dranzone.net` at startup (`dr-anthropic`, `dr-google`, `dr-openai`). Options mirror the workstation setup:
 
@@ -327,7 +334,10 @@ Providers in `docker/opencode.json` opt in with `"litellm": true` and discover t
 - `modelDefaults` — gap-filling defaults (limits, cost, variants) for matching model ids
 - `litellmMcp` / `litellmMcpEnabled` — opt-in MCP-server discovery from the same proxy (currently off)
 
-Models curated directly under `provider.dr-openai.models` are never overwritten by discovery — the workspace agents keep pinning those ids. If discovery fails (proxy unreachable, bad `LITELLM_API_KEY`), OpenCode still starts with the curated models and the plugin logs a warning to `/tmp/opencode.log`.
+The provider `models` maps are intentionally empty: the model lineup (including
+all pinned agent models) comes from LiteLLM discovery. If discovery fails
+(proxy unreachable, bad `LITELLM_API_KEY`), OpenCode starts with no dr-* models
+and the plugin logs a warning to `/tmp/opencode.log`.
 
 The fork has no runtime npm dependencies (type-only imports), so the vendored source runs without `node_modules`. To update it, re-vendor from `~/.config/opencode/opencode-litellm` on the workstation (copy `src/`, `package.json`, `LICENSE`, `README.md`, `tsconfig.json`).
 

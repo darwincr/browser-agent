@@ -46,11 +46,11 @@ services:
       - ./workspaces:/workspaces
       - ./data:/data
       - opencode-home:/home/opencode
-      - ./docker/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
-      # opencode-litellm plugin: auto-loaded shim + vendored fork source.
-      # OpenCode loads every file in ~/.config/opencode/plugins at startup.
-      - ./docker/opencode-plugins:/home/opencode/.config/opencode/plugins:ro
-      - ./docker/opencode-litellm:/home/opencode/.config/opencode/opencode-litellm:ro
+      # The global OpenCode config and the opencode-litellm plugin are baked
+      # into the image under /opt/opencode-global and synced into the
+      # opencode-home volume by the entrypoint on every boot. Do NOT bind-mount
+      # them from the deployment directory: Coolify rebuilds the image on push
+      # but never refreshes host-side bind sources, so they would go stale.
 
 volumes:
   opencode-home:

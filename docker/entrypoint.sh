@@ -100,6 +100,26 @@ if [ "$(id -u)" = "0" ]; then
     chown opencode:opencode /data/cli-build-summary.last
   fi
 
+  # Global OpenCode config, plugin shim, and vendored opencode-litellm source:
+  # the image is the source of truth. Host-side bind-mount sources in the
+  # Coolify deployment directory go stale between deploys, so refresh the
+  # copies inside the persistent opencode-home volume on every boot. Root-owned
+  # read-only so the sudo-less agent cannot tamper with the global config.
+  # Skip when an older deployment still bind-mounts these paths read-only.
+  if [ -d /opt/opencode-global ] \
+      && ! mountpoint -q /home/opencode/.config/opencode/opencode.json \
+      && ! mountpoint -q /home/opencode/.config/opencode/plugins \
+      && ! mountpoint -q /home/opencode/.config/opencode/opencode-litellm; then
+    mkdir -p /home/opencode/.config/opencode
+    cp /opt/opencode-global/opencode.json /home/opencode/.config/opencode/opencode.json
+    rm -rf /home/opencode/.config/opencode/plugins /home/opencode/.config/opencode/opencode-litellm
+    cp -a /opt/opencode-global/plugins /opt/opencode-global/opencode-litellm /home/opencode/.config/opencode/
+    chown root:root /home/opencode/.config/opencode/opencode.json
+    chmod 0444 /home/opencode/.config/opencode/opencode.json
+    chown -R root:root /home/opencode/.config/opencode/plugins /home/opencode/.config/opencode/opencode-litellm
+    chmod -R a-w /home/opencode/.config/opencode/plugins /home/opencode/.config/opencode/opencode-litellm
+  fi
+
   exec gosu opencode "$0" "$@"
 fi
 

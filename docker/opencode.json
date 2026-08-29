@@ -11,10 +11,16 @@
   "plugin": [
     "@tarquinen/opencode-smart-title"
   ],
-  "default_agent": "Build",
-  "small_model": "dr-openai/CLIProxy/gemini-3.1-flash-lite",
+  "default_agent": "build",
+  "small_model": "dr-google/CLIProxyGemini/gemini-3.1-flash-lite",
   "autoupdate": true,
   "snapshot": false,
+  "command": {
+    "commit": {
+      "description": "commit all changes",
+      "template": "please commit and push all changes as a single commit"
+    }
+  },
   "compaction": {
     "auto": true,
     "prune": true,
@@ -50,7 +56,7 @@
     },
     "dr-openai": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "DR LiteLLM",
+      "name": "DR OpenAI",
       "options": {
         "apiKey": "{env:LITELLM_API_KEY}",
         "baseURL": "https://litellm.dranzone.net/",
@@ -125,98 +131,7 @@
         ],
         "setCacheKey": true
       },
-      "models": {
-        "zai/glm-5.2": {
-          "name": "GLM-5.2",
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          },
-          "cost": {
-            "input": 1.4,
-            "output": 4.4
-          },
-          "variants": {
-            "none": {
-              "reasoningEffort": "none"
-            },
-            "high": {
-              "reasoningEffort": "high"
-            },
-            "max": {
-              "reasoningEffort": "max"
-            }
-          }
-        },
-        "cockpit/gpt-5.5": {
-          "name": "Cockpit GPT-5.5",
-          "limit": {
-            "context": 1050000,
-            "output": 128000
-          },
-          "cost": {
-            "input": 5,
-            "output": 30,
-            "cache_read": 0.5
-          },
-          "variants": {
-            "none": {
-              "reasoningEffort": "none"
-            },
-            "low": {
-              "reasoningEffort": "low"
-            },
-            "medium": {
-              "reasoningEffort": "medium"
-            },
-            "high": {
-              "reasoningEffort": "high"
-            },
-            "xhigh": {
-              "reasoningEffort": "xhigh"
-            }
-          }
-        },
-        "omlx/Qwen3.6-27B-oQ8-fp16-mtp": {
-          "name": "OMLX Qwen3.6 27B oQ8 fp16 MTP",
-          "limit": {
-            "context": 131072,
-            "output": 131072
-          },
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "variants": {
-            "reasoning": {},
-            "none": {
-              "reasoningEffort": "none"
-            }
-          }
-        },
-        "CLIProxy/gemini-3.1-flash-lite": {
-          "name": "Gemini 3.1 Flash Lite",
-          "limit": {
-            "context": 1048576,
-            "output": 65535
-          },
-          "cost": {
-            "input": 0.25,
-            "output": 1.5
-          }
-        },
-        "CLIProxy/gemini-3-flash": {
-          "name": "Gemini 3 Flash",
-          "limit": {
-            "context": 1048576,
-            "output": 65535
-          },
-          "cost": {
-            "input": 0.5,
-            "output": 3
-          }
-        }
-      }
+      "models": {}
     }
   },
   "permission": {
@@ -231,10 +146,10 @@
     }
   },
   "agent": {
-    "Build": {
+    "build": {
       "mode": "primary",
       "description": "Build",
-      "model": "dr-openai/zai/glm-5.2",
+      "model": "dr-openai/zai/glm-5.3",
       "temperature": 1,
       "permission": {
         "bash": {
@@ -244,12 +159,13 @@
         },
         "edit": "allow"
       },
-      "options": {}
+      "options": {},
+      "variant": "max"
     },
-    "Build1": {
+    "build1": {
       "mode": "primary",
       "description": "Build 1",
-      "model": "dr-openai/cockpit/gpt-5.5",
+      "model": "dr-openai/CLIProxy/gpt-5.6-sol",
       "temperature": 1,
       "permission": {
         "bash": {
@@ -259,13 +175,14 @@
         },
         "edit": "allow"
       },
-      "options": {}
+      "options": {},
+      "variant": "xhigh"
     },
-    "Build3": {
+    "build2": {
       "mode": "primary",
-      "description": "Build 3",
-      "model": "dr-openai/omlx/Qwen3.6-27B-oQ8-fp16-mtp",
-      "temperature": 0.1,
+      "description": "Build 2",
+      "model": "dr-anthropic/CLIProxyAnthropic/claude-opus-5",
+      "temperature": 1,
       "permission": {
         "bash": {
           "*": "allow",
@@ -274,48 +191,94 @@
         },
         "edit": "allow"
       },
-      "options": {}
+      "options": {},
+      "variant": "xhigh"
+    },
+    "build3": {
+      "mode": "primary",
+      "description": "Build 3",
+      "model": "dr-openai/CLIProxy/gpt-5.6-luna",
+      "temperature": 1,
+      "permission": {
+        "bash": {
+          "*": "allow",
+          "git push": "deny",
+          "git push *": "deny"
+        },
+        "edit": "allow"
+      },
+      "options": {},
+      "variant": "xhigh"
+    },
+    "build4": {
+      "mode": "primary",
+      "description": "Build 4",
+      "model": "dr-google/CLIProxyGemini/gemini-3.7-flash-high",
+      "temperature": 1,
+      "permission": {
+        "bash": {
+          "*": "allow",
+          "git push": "deny",
+          "git push *": "deny"
+        },
+        "edit": "allow"
+      },
+      "options": {},
+      "variant": "high"
     },
     "plan": {
       "mode": "primary",
-      "description": "Planning agent - GLM5.2",
-      "model": "dr-openai/zai/glm-5.2",
+      "description": "Planning agent - GLM5.3",
+      "model": "dr-openai/zai/glm-5.3",
       "temperature": 1,
       "tools": {
-        "write": false,
+        "bash": false,
         "edit": false,
-        "bash": false
+        "write": false
       },
       "options": {},
       "permission": {
-        "edit": "deny",
-        "bash": "deny"
-      }
+        "bash": "deny",
+        "edit": "deny"
+      },
+      "variant": "max"
     },
     "general": {
       "mode": "subagent",
-      "description": "Deep reasoning and research",
-      "model": "dr-openai/zai/glm-5.2",
-      "variant": "none",
+      "description": "General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.",
+      "model": "dr-openai/zai/glm-5.3-flash",
       "temperature": 1,
       "steps": 10,
-      "permission": {}
+      "permission": {
+        "todowrite": "deny"
+      },
+      "options": {},
+      "variant": "high"
     },
     "explore": {
       "mode": "subagent",
-      "description": "Fast codebase exploration",
-      "model": "dr-openai/zai/glm-5.2",
-      "variant": "none",
+      "description": "Fast agent specialized for exploring codebases. Use this when you need to quickly find files by patterns (eg. \"src/components/**/*.tsx\"), search code for keywords (eg. \"API endpoints\"), or answer questions about the codebase (eg. \"how do API endpoints work?\"). When calling this agent, specify the desired thoroughness level: \"quick\" for basic searches, \"medium\" for moderate exploration, or \"very thorough\" for comprehensive analysis across multiple locations and naming conventions.",
+      "model": "dr-openai/zai/glm-5.3-flash",
       "temperature": 1,
-      "tools": {
-        "webfetch": false
-      },
       "permission": {
-        "webfetch": "deny"
-      }
+        "*": "deny",
+        "bash": "allow",
+        "external_directory": {
+          "*": "deny"
+        },
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "read": "allow",
+        "webfetch": "deny",
+        "websearch": "allow"
+      },
+      "options": {},
+      "variant": "high"
     },
     "compaction": {
-      "model": "dr-openai/CLIProxy/gemini-3-flash"
+      "model": "dr-openai/zai/glm-5.3-flash",
+      "variant": "high"
     }
   }
 }

@@ -127,7 +127,15 @@ export HOME="${HOME:-/home/opencode}"
 export DISPLAY="${DISPLAY:-:1}"
 export OPENCODE_HOST="${OPENCODE_HOST:-127.0.0.1}"
 export OPENCODE_PORT="${OPENCODE_PORT:-4096}"
-export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://${OPENCODE_HOST}:${OPENCODE_PORT}}"
+export OPENCODE_CORS="${OPENCODE_CORS:-https://browser-app.dranzone.net}"
+# When the OpenCode server enforces basic auth, embed the credentials in the
+# upstream base URL; the httpx client used by opencode-a2a sends them as an
+# Authorization header automatically.
+if [ -n "${OPENCODE_SERVER_PASSWORD:-}" ]; then
+  export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://${OPENCODE_SERVER_USERNAME:-opencode}:${OPENCODE_SERVER_PASSWORD}@${OPENCODE_HOST}:${OPENCODE_PORT}}"
+else
+  export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://${OPENCODE_HOST}:${OPENCODE_PORT}}"
+fi
 export BH_HOME="${BH_HOME:-$HOME/.browser-harness}"
 export BROWSER_HARNESS_HOME="${BROWSER_HARNESS_HOME:-$BH_HOME}"
 export BU_CDP_URL="${BU_CDP_URL:-http://127.0.0.1:9222}"
@@ -188,7 +196,11 @@ websockify --web=/usr/share/novnc/ "${NOVNC_PORT:-6080}" localhost:5900 2>&1 | t
 
 start-browser-harness-browser 2>&1 | tee /tmp/browser-harness-browser.log &
 
-opencode serve --hostname "$OPENCODE_HOST" --port "$OPENCODE_PORT" --log-level INFO 2>&1 | tee /tmp/opencode.log &
+cors_args=()
+for domain in $OPENCODE_CORS; do
+  cors_args+=(--cors "$domain")
+done
+opencode web --hostname "$OPENCODE_HOST" --port "$OPENCODE_PORT" "${cors_args[@]}" --log-level INFO 2>&1 | tee /tmp/opencode.log &
 
 A2A_PORT="$A2A_UPSTREAM_PORT" A2A_HOST="127.0.0.1" opencode-a2a serve 2>&1 | tee /tmp/opencode-a2a.log &
 

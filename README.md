@@ -317,6 +317,8 @@ Runtime knobs:
 - `A2A_FILE_TASK_ROOT`: task staging root, default `/workspaces/a2a-tasks`.
 - `A2A_FILE_MAX_INLINE_BYTES`: maximum inline `bytes` file size, default `10485760`.
 - `OPENCODE_TIMEOUT`: max seconds `opencode-a2a` waits for OpenCode to finish a non-streaming request, default `1800` in this image.
+- `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD`: basic auth for the OpenCode web UI and API. An empty password disables auth. When set, the health check and the `opencode-a2a` upstream authenticate automatically (the entrypoint embeds the credentials in `OPENCODE_BASE_URL`).
+- `OPENCODE_CORS`: space-separated list of extra CORS origins allowed against the OpenCode server, default `https://browser-app.dranzone.net`.
 
 ## Provider Configuration
 
@@ -412,7 +414,7 @@ Chromium executable instead of installing a second Debian Chromium package.
 
 ## Overriding Startup
 
-The default entrypoint starts XFCE, VNC, noVNC, `opencode serve`, and `opencode-a2a serve`.
+The default entrypoint starts XFCE, VNC, noVNC, `opencode web`, and `opencode-a2a serve`.
 
 To open a shell instead:
 

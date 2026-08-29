@@ -16,7 +16,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     A2A_PORT=8000 \
     A2A_UPSTREAM_PORT=8001 \
     A2A_PUBLIC_URL=http://localhost:8000 \
-    OPENCODE_BASE_URL=http://127.0.0.1:4096 \
     OPENCODE_TIMEOUT=1800 \
     OPENCODE_WORKSPACE_ROOT=/workspaces \
     BH_HOME=/home/opencode/.browser-harness \
